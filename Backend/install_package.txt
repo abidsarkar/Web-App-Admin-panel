@@ -1,0 +1,1 @@
+npm install argon2 body-parser cloudinary colorette cookie-parser cors dayjs dotenv express express-rate-limit firebase-admin http-errors http-status ioredis jsonwebtoken moment mongoose multer nodemailer sanitize-html socket.io socket.io-client winston-daily-rotate-file zod

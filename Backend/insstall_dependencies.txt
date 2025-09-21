@@ -1,0 +1,1 @@
+npm install -D @eslint/js @types/cookie-parser @types/express @types/jsonwebtoken @types/multer @types/node @types/nodemailer @types/sanitize-html eslint eslint-plugin-react globals nodemon ts-node typescript typescript-eslint
