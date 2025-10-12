@@ -2,7 +2,7 @@
   "name": "backend",
   "version": "1.0.1",
   "description": "This is the backend for admin panel and dashboard of my web project",
-    "main": "server.ts",
+  "main": "server.ts",
   "scripts": {
     "dev": "nodemon --watch src --exec ts-node src/server.ts",
     "build": "tsc",
