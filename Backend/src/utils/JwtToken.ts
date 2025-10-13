@@ -1,4 +1,4 @@
-import { sign, verify } from "jsonwebtoken";
+import { Secret, sign, verify } from "jsonwebtoken";
 import dotenv, { config } from "dotenv";
 import { JWT_SECRET_KEY } from "../config/envConfig";
 import httpStatus from "http-status";
@@ -21,20 +21,43 @@ export type TokenData = {
 
 const secret = JWT_SECRET_KEY as string;
 if (!secret) throw new Error("JWT_SECRET_KEY is not defined");
-
-export function generateToken({
+export function generateAccessToken({
   id,
   role,
   email,
 }: {
   id: string | any;
   role: string;
-  email: string ;
+  email: string;
 }): string {
-  return sign({ id, role, email }, JWT_SECRET_KEY as string, {
-    expiresIn: "7d",
-  });
-}   
+  try {
+    const token = jwt.sign({ id, role, email }, JWT_SECRET_KEY as string, {
+      expiresIn: '1h',
+    });
+    return token;
+  } catch (error) {
+    console.error("JWT Sign Error:", error);
+    throw new Error("Failed to generate access token!!");
+  }
+}
+export function generateRefreshToken({
+  id,
+  role,
+  email,
+}: {
+  id: string | any;
+  role: string;
+  email: string;
+}): string {
+  try {
+    return jwt.sign({ id, role, email }, JWT_SECRET_KEY as string, {
+      expiresIn: '7d',
+    });
+  } catch (error) {
+    console.error("JWT Sign Error:", error);
+    throw new Error("Failed to generate refresh token");
+  }
+}
 export function verifySocketToken(token: string) {
   try {
     return verify(token, secret) as TokenData;
@@ -44,7 +67,7 @@ export function verifySocketToken(token: string) {
   }
 }
 export const verifyToken = (
-  authHeader: string | undefined,
+  authHeader: string | undefined
 ): { id?: string; email?: string } => {
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     const errorMessage = "No token provided or invalid format.";
@@ -63,16 +86,11 @@ export const verifyToken = (
     throw new ApiError(498, "Invalid or expired token."); //-> 498 code is only for token expired status
   }
 };
-export const generateRegisterToken = (payload: any): string => {
-  return jwt.sign(payload, JWT_SECRET_KEY as string, { expiresIn: "1h" });
-};
-export const generateRefreshToken = (payload: any): string => {
-  return jwt.sign(payload, JWT_SECRET_KEY as string, { expiresIn: "90d" }); // 90 days (approximately 3 months)
-};
 
-export const generateAccessToken = (payload: any): string => {
-  return jwt.sign(payload, JWT_SECRET_KEY as string, { expiresIn: "7d" }); // 1 hour
-};
+
+// export const generateAccessToken = (payload: any): string => {
+//   return jwt.sign(payload, JWT_SECRET_KEY as string, { expiresIn: "7d" }); // 1 hour
+// };
 
 // export const generateAccessRefreshToken = async (userId: string) => {
 //   try {
