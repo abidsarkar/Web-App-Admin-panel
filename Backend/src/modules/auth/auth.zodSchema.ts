@@ -1,9 +1,10 @@
 import { z } from "zod";
 
 export const loginSchema = z.object({
-  email: z.email(),
+  email: z
+    .email({ message: "Invalid email address" }),
   password: z
-    .string("Password is required")
-    .min(6, "Password must be at least 6 characters"),
+    .string({ message: "Password is required" })
+    .min(6, { message: "Password must be at least 6 characters" }),
 });
 //export type LoginInput = z.infer<typeof loginSchema>["body"];
