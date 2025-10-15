@@ -12,3 +12,4 @@ export const UPLOAD_FOLDER = process.env.UPLOAD_FOLDER;
 export const MAX_PROFILE_PIC_SIZE = Number(process.env.MAX_PROFILE_PIC_SIZE);
 //console.log("the number",typeof MAX_PROFILE_PIC_SIZE); // "number"
 export const NODE_ENV = process.env.NODE_ENV ?? "development";
+export const OTP_EXPIRE_TIME = Number(process.env.OTP_EXPIRE_TIME) || 5*60*1000;

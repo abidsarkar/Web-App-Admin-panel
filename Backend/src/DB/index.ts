@@ -1,5 +1,5 @@
 
-import { User } from "../modules/user/user.model";
+import { Admin } from "../modules/user/user.model";
 import { hashPassword } from "../utils/hashManager";
 
 const admin = {
@@ -10,8 +10,8 @@ const admin = {
   isDeleted: false,
 };
 const admin2 = {
-  name: "admin",
-  email: "admin@gmail.com",
+  name: "md abid sarkar",
+  email: "abidsarker.61@gmail.com",
   password: "1qazxsw2",
   role: "admin",
   isDeleted: false,
@@ -21,7 +21,7 @@ export const seedSuperAdmin = async () => {
   const admins = [admin, admin2];
 
   for (const adminData of admins) {
-    const isAdminExists = await User.findOne({ email: adminData.email });
+    const isAdminExists = await Admin.findOne({ email: adminData.email });
 
     if (!isAdminExists) {
       const hashedPassword = await hashPassword(adminData.password);
@@ -30,7 +30,7 @@ export const seedSuperAdmin = async () => {
         password: hashedPassword,
       };
 
-      await User.create(adminWithHashedPassword);
+      await Admin.create(adminWithHashedPassword);
       console.log(`Admin created: ${adminData.email}`);
     } else {
       console.log(`Admin already exists: ${adminData.email}`);

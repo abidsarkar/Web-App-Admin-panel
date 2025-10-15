@@ -1,15 +1,18 @@
 // src/types/user.interface.ts
 import { Document } from "mongoose";
 
-export type UserRole = "admin" | "superAdmin";
+export type AdminRole = "admin" | "superAdmin";
 
-export interface IUser extends Document {
+export interface IAdmin extends Document {
   name: string;
   email: string;
   password: string;
   phone?: string;
   profilePic?: string;
-  role: UserRole;
+  role: AdminRole;
+  otp?:string;
+  otpExpiresAt?:Date;
+  isForgotPasswordVerified?:boolean;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

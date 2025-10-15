@@ -1,6 +1,6 @@
 // src/controllers/auth.controller.ts
 import { Request, Response } from "express";
-import { loginService } from "./auth.service";
+import { loginService, forgotPasswordService } from "./auth.service";
 import catchAsync from "../../utils/catchAsync";
 import httpStatus from "http-status";
 import { loginSchema, emailSchema } from "./auth.zodSchema";
@@ -37,22 +37,25 @@ export const loginController = catchAsync(
         user,
       },
     });
-    
   }
 );
-export const forgotPassword = catchAsync(
+export const forgotPasswordController = catchAsync(
   async (req: Request, res: Response) => {
-    //check if email is valid using zod
-    const parsed = emailSchema.safeParse(req.body.email);
-    //return error if email is not valid formate
-    if (!parsed.success) {
-      return res.status(httpStatus.BAD_REQUEST).json({
-        success: false,
-        message: "Invalid email formate",
-        errors: z.treeifyError(parsed.error),
-      });
-    }
-    const email = parsed.data;
-    // check if the email is exist in database or not
+    const { email } = req.body;
+    const { forgotPasswordToken } = await forgotPasswordService(email);
+    res.cookie("forgotPasswordToken", forgotPasswordToken,
+      {
+        httpOnly:true,
+        secure:process.env.NODE_ENV==="production",
+        sameSite:"strict",
+        maxAge: 5 * 60 * 1000, // 5 minutes
+      }
+    );
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Forgot password otp send to your email successful",
+      data: {},
+    });
   }
 );

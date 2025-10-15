@@ -58,6 +58,21 @@ export function generateRefreshToken({
     throw new Error("Failed to generate refresh token");
   }
 }
+export function generateForgotPasswordToken({
+email
+}: {
+  email: string;
+}): string {
+  try {
+    const token = jwt.sign({ email }, JWT_SECRET_KEY as string, {
+      expiresIn: '5m',
+    });
+    return token;
+  } catch (error) {
+    console.error("JWT Sign Error:", error);
+    throw new Error("Failed to generate forgot password token!!");
+  }
+}
 export function verifySocketToken(token: string) {
   try {
     return verify(token, secret) as TokenData;

@@ -1,9 +1,8 @@
 // src/models/user/user.model.ts
 import mongoose, { Schema } from "mongoose";
-import argon2 from "argon2";
-import { IUser } from "./user.interface";
+import { IAdmin } from "./user.interface";
 
-const userSchema = new Schema<IUser>(
+const adminSchema = new Schema<IAdmin>(
   {
     name: {
       type: String,
@@ -33,6 +32,15 @@ const userSchema = new Schema<IUser>(
       enum: ["admin", "superAdmin"],
       default: "admin",
     },
+    otp: {
+      type: String,
+    },
+    otpExpiresAt: {
+      type: Date,
+    },
+    isForgotPasswordVerified: {
+      type: Boolean,
+    },
     isActive: {
       type: Boolean,
       default: true,
@@ -41,4 +49,4 @@ const userSchema = new Schema<IUser>(
   { timestamps: true }
 );
 
-export const User = mongoose.model<IUser>("User", userSchema);
+export const Admin = mongoose.model<IAdmin>("Admin", adminSchema);
