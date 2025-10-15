@@ -37,6 +37,7 @@ app.get("/", (req: Request, res: Response) => {
 });
 
 //app.all("*",notFound)
+//for undefined routes
 app.use(globalErrorHandler);
 // Log errors
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
