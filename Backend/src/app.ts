@@ -3,8 +3,8 @@ import path from "path";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express, { Application, NextFunction, Request, Response } from "express";
-
-
+import globalErrorHandler from "./middlewares/globalErrorHandler";
+import notFound from "./middlewares/notFound";
 import router from "./routes";
 import { logger, logHttpRequests } from "./logger/logger";
 
@@ -36,8 +36,8 @@ app.get("/", (req: Request, res: Response) => {
   res.status(200).send(template);
 });
 
-
-
+//app.all("*",notFound)
+app.use(globalErrorHandler);
 // Log errors
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   logger.error(`Error occurred: ${err.message}`, { stack: err.stack });
