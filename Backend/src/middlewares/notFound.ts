@@ -1,11 +1,9 @@
-import { Request, Response } from "express";
+import { Request, Response, NextFunction } from "express";
+import ApiError from "../errors/ApiError";
+import httpStatus from "http-status";
 
-const notFound = (req: Request, res: Response) => {
-  res.status(404).json({
-    status: "fail",
-    statusCode: 404,
-    message: `Route Not Found for ${req.originalUrl}`,
-  });
+const notFound = (req: Request, res: Response, next: NextFunction) => {
+  next(new ApiError(httpStatus.NOT_FOUND, `API endpoint not found: ${req.originalUrl}`));
 };
 
 export default notFound;

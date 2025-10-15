@@ -36,10 +36,18 @@ app.get("/", (req: Request, res: Response) => {
   res.status(200).send(template);
 });
 
-//app.all("*",notFound)
-//for undefined routes
+// ============================================
+// ❌ Handle 404 - Unknown API routes
+// ============================================
+app.use( notFound);
+
+// ============================================
+// 🧱 Global Error Handler
+// ============================================
 app.use(globalErrorHandler);
-// Log errors
+// ============================================
+// 🪵 Log Errors (Optional: can move to globalErrorHandler)
+// ============================================
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   logger.error(`Error occurred: ${err.message}`, { stack: err.stack });
   next(err);
