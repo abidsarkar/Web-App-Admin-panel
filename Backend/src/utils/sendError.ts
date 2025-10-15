@@ -1,33 +1,21 @@
 import { Response } from "express";
 
-type ErrorData = {
-  [key: string]: any;
-};
-
-// const sendError = (
-//   res: Response,
-//   statusCode: number,
-//   errorData: ErrorData,
-// ): void => {
-//   res.status(statusCode).send({
-//     success: false,
-//     ...errorData,
-//   });
-// };
-
-// export default sendError;
-
-const sendError = (
+export interface ErrorData {
+  statusCode: number;
+  message: string;
+  success?: boolean;
+  errors?: any; // Optional: if you want to include validation or detailed errors
+}
+const sendErrorResponse = (
   res: Response,
-  { statusCode, success = false, message }: ErrorData,
+  { success = false, statusCode, message, errors }: ErrorData
 ): void => {
-  //console.log('Error occurred----->:', { statusCode, success, message });
-
-  res.status(statusCode).send({
+  const response: any = {
     success,
-    status: statusCode,
-    message: ` ${message} `,
-  });
+    statusCode,
+    message,
+    ...(errors && { errors }),
+  };
+  res.status(statusCode).json(response);
 };
 
-export default sendError;

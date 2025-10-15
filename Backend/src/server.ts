@@ -2,7 +2,7 @@ import { createServer, Server as HttpServer } from "http";
 import mongoose from "mongoose";
 import app from "./app"; // Your Express app
 import { PORT, DATABASE_URL } from "./config/envConfig";
-
+import seedSuperAdmin from "./DB/index";
 let server: HttpServer;
 
 async function connectDB() {
@@ -35,7 +35,8 @@ async function connectDB() {
 
 async function startServer() {
   await connectDB();
-
+// 🦸 Seed Super Admin
+  //await seedSuperAdmin();
   // Start HTTP server
   server = createServer(app);
   const serverStartTime = Date.now();
