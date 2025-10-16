@@ -79,10 +79,10 @@ import path from "path";
 import { Express } from "express";
 import { Request } from "express";
 import createHttpError from "http-errors";
-import { max_file_size, UPLOAD_FOLDER } from "../config/envConfig";
+import { MAX_FILE_SIZE, UPLOAD_FOLDER } from "../config/envConfig";
 
 const UPLOAD_PATH = UPLOAD_FOLDER || "public/images"; // Default images folder
-const MAX_FILE_SIZE = Number(max_file_size) || 5 * 1024 * 1024;
+const MAX_FILE_SIZE2 = Number(MAX_FILE_SIZE) || 5 * 1024 * 1024;
 
 const ALLOWED_FILE_TYPES = [
   ".jpg",
@@ -160,7 +160,7 @@ const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: MAX_FILE_SIZE,
+    fileSize: MAX_FILE_SIZE2,
   },
 });
 
