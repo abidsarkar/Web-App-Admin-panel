@@ -1,5 +1,5 @@
 
-import { Admin } from "../modules/user/user.model";
+import { Admin } from "../modules/auth/auth.model";
 import { hashPassword } from "../utils/hashManager";
 
 const admin = {

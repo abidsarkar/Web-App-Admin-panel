@@ -6,26 +6,29 @@ import {
 } from "./../../utils/JwtToken";
 
 // src/services/auth.service.ts
-import { Admin } from "../user/user.model";
+import { Admin } from "./auth.model";
 import jwt from "jsonwebtoken";
 import argon2 from "argon2";
 import ApiError from "../../errors/ApiError";
 import httpStatus from "http-status";
 import { JWT_SECRET_KEY } from "../../config/envConfig";
 import { response } from "express";
-import { emailSchema } from "./auth.zodSchema";
+import { emailSchema, otpSchema } from "./auth.zodSchema";
 import { error } from "console";
 import {
   generateOTP,
   otpExpireTime,
   sendForgotPasswordOTPEmail,
+  sendResendOTPEmail,
+  
 } from "./auth.utils";
+import { hashPassword } from "../../utils/hashManager";
 
 export const loginService = async (email: string, password: string) => {
   // 1️⃣ Find user by email
   const user = await Admin.findOne({ email }).select("+password");
   if (!user) {
-    throw new ApiError(httpStatus.FORBIDDEN, "User account is deactivated");
+    throw new ApiError(httpStatus.UNAUTHORIZED, "User Not ");
   }
 
   // 2️⃣ Check if active
@@ -58,7 +61,12 @@ export const loginService = async (email: string, password: string) => {
     email: user.email,
     role: user.role,
   };
-
+  user.lastLoginAt = new Date();
+  user.otp = undefined;
+  user.otpExpiresAt= undefined;
+  user.changePasswordExpiresAt= undefined;
+  user.isForgotPasswordVerified= undefined;
+  await user.save();
   return { accessToken, refreshToken, user: userData };
 };
 // forgot password service
@@ -98,4 +106,119 @@ export const forgotPasswordService = async (email: string) => {
     email: user.email,
   });
   return { forgotPasswordToken };
+};
+export const verifyForgotPasswordOTPService = async (
+  otp: string,
+  email: string
+) => {
+  // 1 Find user by email
+  const user = await Admin.findOne({ email }).select("+password");
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, "User Not found");
+  }
+
+  // 2 Check if active
+  if (!user.isActive) {
+    throw new ApiError(httpStatus.FORBIDDEN, "User account is deactivated");
+  }
+  // 3 check same otp and otp not expired
+  if(user.otp !==otp ){
+    throw new ApiError(httpStatus.BAD_REQUEST, "OTP is not valid");
+  }
+  if (user.otpExpiresAt && user.otpExpiresAt < new Date()) {
+    throw new ApiError(httpStatus.BAD_REQUEST, "OTP has expired");
+  }
+  user.isForgotPasswordVerified = true; // Set the forgot password verification flag to true
+  user.changePasswordExpiresAt = await otpExpireTime(); // Set the change password expiration time
+  user.otp = undefined; // Clear the OTP after successful verification
+  user.otpExpiresAt = undefined; // Clear the OTP expiration time
+  await user.save();
+
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "OTP verified successfully",
+    error:null,
+    data:{
+      accessToken:null,
+      user:null
+    },
+  };
+};
+export const PasswordChangeService = async (
+  password: string,
+  email: string
+) => {
+  // 1 Find user by email
+  const user = await Admin.findOne({email});
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, "User Not found22");
+  }
+
+  // 2 Check if active
+  if (!user.isActive) {
+    throw new ApiError(httpStatus.FORBIDDEN, "User account is deactivated");
+  }
+  if (!user.isForgotPasswordVerified) {
+    throw new ApiError(httpStatus.BAD_REQUEST, "Please verify OTP first");
+  }
+ // 3 password change time valid or not
+  if (user.changePasswordExpiresAt && user.changePasswordExpiresAt < new Date()) {
+    throw new ApiError(httpStatus.BAD_REQUEST, "password change time has expired");
+  }
+  const hashedPassword = await hashPassword(password);
+  user.password= hashedPassword;
+  user.isForgotPasswordVerified = false; 
+  user.changePasswordExpiresAt = undefined 
+
+  await user.save();
+
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "password change successfully",
+    error:null,
+    data:{
+      accessToken:null,
+      user:null
+    },
+  };
+};
+//resend otp service
+export const resendOTPService = async (email: string) => {
+ 
+  // 1 Find user by email
+  const user = await Admin.findOne({ email }).select("+password");
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, "User Not found");
+  }
+  // 3 Check if active
+  if (!user.isActive) {
+    throw new ApiError(httpStatus.FORBIDDEN, "User account is deactivated");
+  }
+  // generate OTP
+  const otp = generateOTP();
+  const otpExpiresAt = await otpExpireTime(); // Get the OTP expiration time
+
+  // 3. Update the OTP and expiration time in the user's document
+  user.otp = otp;
+  user.otpExpiresAt = otpExpiresAt;
+  user.isForgotPasswordVerified = false; // Set the forgot password verification flag to true
+  // 4. Send OTP email to the user
+  await sendResendOTPEmail(email, otp, user.name);
+  // Save the user document with the new OTP and expiration time
+  await user.save();
+  const forgotPasswordToken = generateForgotPasswordToken({
+    email: user.email,
+  });
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "resend otp successfully",
+    error:null,
+    data:{
+      forgotPasswordToken:forgotPasswordToken,
+      user:null
+    },
+  };
 };

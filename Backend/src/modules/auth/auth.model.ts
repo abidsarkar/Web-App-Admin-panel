@@ -1,6 +1,6 @@
 // src/models/user/user.model.ts
 import mongoose, { Schema } from "mongoose";
-import { IAdmin } from "./user.interface";
+import { IAdmin } from "./auth.interface";
 
 const adminSchema = new Schema<IAdmin>(
   {
@@ -38,13 +38,20 @@ const adminSchema = new Schema<IAdmin>(
     otpExpiresAt: {
       type: Date,
     },
+    changePasswordExpiresAt: {
+      type: Date,
+    },
     isForgotPasswordVerified: {
       type: Boolean,
+      default: false,
     },
     isActive: {
       type: Boolean,
       default: true,
     },
+    lastLoginAt:{
+      type:Date,
+    }
   },
   { timestamps: true }
 );

@@ -1,3 +1,4 @@
+import { error } from 'console';
 export type TResponse<T> = {
   statusCode: number;
   success: boolean;
@@ -11,6 +12,7 @@ export type TResponse<T> = {
     totalItem?: number;
   };
   data: T;
+  error?: string | null | object;
 };
 
 export type IQueryObj = {

@@ -12,8 +12,10 @@ export interface IAdmin extends Document {
   role: AdminRole;
   otp?:string;
   otpExpiresAt?:Date;
+  changePasswordExpiresAt?:Date;
   isForgotPasswordVerified?:boolean;
   isActive: boolean;
+  lastLoginAt:Date,
   createdAt: Date;
   updatedAt: Date;
 

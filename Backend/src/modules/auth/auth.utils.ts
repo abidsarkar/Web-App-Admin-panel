@@ -1,5 +1,5 @@
 import { Response } from "express";
-import { Admin } from "../user/user.model";
+import { Admin } from "./auth.model";
 import { NODEMAILER_GMAIL, NODEMAILER_GMAIL_PASSWORD, OTP_EXPIRE_TIME } from "../../config/envConfig";
 import ApiError from "../../errors/ApiError";
 import nodemailer from "nodemailer"
@@ -94,7 +94,7 @@ export const sendForgotPasswordOTPEmail = async (
   }
 };
 
-export const sendResetOTPEmail = async (
+export const sendResendOTPEmail = async (
   email: string,
   otp: string,
   name: string
