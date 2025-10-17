@@ -1,5 +1,58 @@
+import  httpStatus  from 'http-status';
 import { Request, Response } from 'express';
+import catchAsync from '../../utils/catchAsync';
+import sendResponse from '../../utils/sendResponse';
+import ApiError from '../../errors/ApiError';
+import { loginService } from './test.service';
+import { sendAccessCookie, sendRefreshCookie } from '../auth/auth.utils';
+import z from 'zod';
+import { loginSchema } from './test.zodSchema';
 
+export const loginController = catchAsync(
+  async (req: Request, res: Response) => {
+    const parsed = loginSchema.safeParse(req.body);
+    if (!parsed.success) {
+      //todo const formattedErrors = parsed.error.format();
+      return res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "login Validation Error",
+        //todo errors: formattedErrors,
+        errors: z.treeifyError(parsed.error),
+        //todo errors2: z.prettifyError(parsed.error),
+      });
+    }
+    const { email, password } = parsed.data;
+    const { statusCode, success, message, error, data } =
+      await loginService(password, email);
+    sendAccessCookie(res, data?.accessToken);
+    sendResponse(res, {
+      statusCode,
+      success,
+      message,
+      error,
+      data: {
+        accessToken:data?.accessToken,
+        user:data?.user,
+      },
+    });
+  }
+);
+
+export const logoutController = catchAsync(
+  async (req: Request, res: Response) => {
+    res.clearCookie("refreshToken");
+    res.clearCookie("accessToken");
+    res.clearCookie("forgotPasswordToken");
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Logout successful",
+      error: null,
+      data: null,
+    });
+  }
+);
+//delete this section in copy controller file
 // Controller for the test endpoint
 export const getTestPage = (req: Request, res: Response) => {
   const currentTime = new Date().toLocaleString(); // Get the current time as a string

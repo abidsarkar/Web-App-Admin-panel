@@ -7,7 +7,8 @@ import httpStatus from 'http-status';
 declare global {
   namespace Express {
     interface Request {
-      user?: import("jsonwebtoken").JwtPayload;
+      // @ts-ignore
+      user?: jwt.JwtPayload;
     }
   }
 }
