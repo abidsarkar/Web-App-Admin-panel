@@ -1,4 +1,4 @@
-import { email } from 'zod';
+import { email } from "zod";
 // src/controllers/auth.controller.ts
 import { Request, Response } from "express";
 import {
@@ -7,6 +7,8 @@ import {
   verifyForgotPasswordOTPService,
   PasswordChangeService,
   resendOTPService,
+  changePassword_FromProfileService,
+  refreshTokenService,
 } from "./auth.service";
 import catchAsync from "../../utils/catchAsync";
 import httpStatus from "http-status";
@@ -18,18 +20,23 @@ import {
 } from "./auth.zodSchema";
 import z from "zod";
 import sendResponse from "../../utils/sendResponse";
-import { sendCookie } from "./auth.utils";
+import {
+  sendAccessCookie,
+  sendRefreshCookie,
+  sendForgotPasswordCookie,
+} from "./auth.utils";
+import ApiError from "../../errors/ApiError";
 export const loginController = catchAsync(
   async (req: Request, res: Response) => {
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) {
-      const formattedErrors = parsed.error.format();
+      //todo const formattedErrors = parsed.error.format();
       return res.status(httpStatus.BAD_REQUEST).json({
         success: false,
-        message: "Validation Error",
-        //errors: formattedErrors,
+        message: "login Validation Error",
+        //todo errors: formattedErrors,
         errors: z.treeifyError(parsed.error),
-        //errors2: z.prettifyError(parsed.error),
+        //todo errors2: z.prettifyError(parsed.error),
       });
     }
     const { email, password } = parsed.data;
@@ -39,11 +46,13 @@ export const loginController = catchAsync(
     );
 
     //send refresh token in cookie
-    sendCookie(res, refreshToken);
+    sendRefreshCookie(res, refreshToken);
+    sendAccessCookie(res, accessToken);
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
       message: "Login successful",
+      error:null,
       data: {
         accessToken,
         user,
@@ -55,18 +64,13 @@ export const forgotPasswordController = catchAsync(
   async (req: Request, res: Response) => {
     const { email } = req.body;
     const { forgotPasswordToken } = await forgotPasswordService(email);
-    res.cookie("forgotPasswordToken", forgotPasswordToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 5 * 60 * 1000, // 5 minutes
-    });
+    sendForgotPasswordCookie(res, forgotPasswordToken);
     sendResponse(res, {
       statusCode: httpStatus.OK,
       success: true,
       message: "Forgot password otp send to your email successful",
       data: {
-        forgotPasswordToken
+        forgotPasswordToken: forgotPasswordToken,
       },
     });
   }
@@ -83,14 +87,16 @@ export const verifyForgotPasswordOTPController = catchAsync(
       });
     }
     const { otp, email } = parsed.data;
-    const { statusCode, success, message, error, data } =
+    const { statusCode, success, message, error, user } =
       await verifyForgotPasswordOTPService(otp, email);
     sendResponse(res, {
       statusCode,
       success,
       message,
       error,
-      data: {},
+      data: {
+        user,
+      },
     });
   }
 );
@@ -107,7 +113,7 @@ export const changePasswordController = catchAsync(
     }
     const { email, password } = parsed.data;
     const { statusCode, success, message, error, data } =
-      await PasswordChangeService(password,email);
+      await PasswordChangeService(password, email);
     sendResponse(res, {
       statusCode,
       success,
@@ -128,17 +134,82 @@ export const resendOTPController = catchAsync(
         data: {},
       });
     }
-    const {email} = parsed.data;
+    const { email } = parsed.data;
     const { statusCode, success, message, error, data } =
       await resendOTPService(email);
+    sendForgotPasswordCookie(res, data.forgotPasswordToken);
     sendResponse(res, {
       statusCode,
       success,
       message,
       error,
       data: {
-        data
+        forgotPasswordToken:data.forgotPasswordToken,
+        user:data.user
       },
+    });
+  }
+);
+
+export const changePassword_fromProfileController = catchAsync(
+  async (req: Request, res: Response) => {
+    const parsed = changePasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "change password Error",
+        errors: z.treeifyError(parsed.error),
+        data: {},
+      });
+    }
+    const { email, password } = parsed.data;
+    const { statusCode, success, message, error, data } =
+      await changePassword_FromProfileService(password, email);
+    sendAccessCookie(res, data?.accessToken);
+    sendResponse(res, {
+      statusCode,
+      success,
+      message,
+      error,
+      data: {
+        accessToken:data?.accessToken,
+        user:data?.user,
+      },
+    });
+  }
+);
+//refresh token controller
+export const refreshTokenController = catchAsync(
+  async (req: Request, res: Response) => {
+    const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
+    console.log(refreshToken);
+    if (!refreshToken) {
+      throw new ApiError(httpStatus.UNAUTHORIZED, "No refresh token provided");
+    }
+    const { statusCode, success, message, error, new_refresh_Token, data } =
+      await refreshTokenService(refreshToken);
+    sendAccessCookie(res, data?.accessToken);
+    sendRefreshCookie(res, new_refresh_Token);
+    sendResponse(res, {
+      statusCode,
+      success,
+      message,
+      error,
+      data: data,
+    });
+  }
+);
+export const logoutController = catchAsync(
+  async (req: Request, res: Response) => {
+    res.clearCookie("refreshToken");
+    res.clearCookie("accessToken");
+    res.clearCookie("forgotPasswordToken");
+    sendResponse(res, {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Logout successful",
+      error: null,
+      data: null,
     });
   }
 );

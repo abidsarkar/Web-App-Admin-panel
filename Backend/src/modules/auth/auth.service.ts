@@ -3,24 +3,22 @@ import {
   generateAccessToken,
   generateForgotPasswordToken,
   generateRefreshToken,
+  verifyToken,
 } from "./../../utils/JwtToken";
 
 // src/services/auth.service.ts
 import { Admin } from "./auth.model";
-import jwt from "jsonwebtoken";
+import jwt, { JwtPayload } from "jsonwebtoken";
 import argon2 from "argon2";
 import ApiError from "../../errors/ApiError";
 import httpStatus from "http-status";
 import { JWT_SECRET_KEY } from "../../config/envConfig";
-import { response } from "express";
 import { emailSchema, otpSchema } from "./auth.zodSchema";
-import { error } from "console";
 import {
   generateOTP,
   otpExpireTime,
   sendForgotPasswordOTPEmail,
   sendResendOTPEmail,
-  
 } from "./auth.utils";
 import { hashPassword } from "../../utils/hashManager";
 
@@ -49,6 +47,7 @@ export const loginService = async (email: string, password: string) => {
     role: user.role,
     email: user.email,
   });
+
   const refreshToken = generateRefreshToken({
     id: user._id,
     role: user.role,
@@ -60,22 +59,27 @@ export const loginService = async (email: string, password: string) => {
     name: user.name,
     email: user.email,
     role: user.role,
+    isActive:user.isActive
   };
   user.lastLoginAt = new Date();
   user.otp = undefined;
-  user.otpExpiresAt= undefined;
-  user.changePasswordExpiresAt= undefined;
-  user.isForgotPasswordVerified= undefined;
+  user.otpExpiresAt = undefined;
+  user.changePasswordExpiresAt = undefined;
+  user.isForgotPasswordVerified = undefined;
   await user.save();
   return { accessToken, refreshToken, user: userData };
 };
 // forgot password service
 export const forgotPasswordService = async (email: string) => {
-  //check if email is valid using zod
-  const parsed = emailSchema.safeParse(email);
+  //! check if email is valid using zod
+  //? check if email is valid using zod
+  //todo check if email is valid using zod
+  // * check if email is valid using zod
+  
+  const parsed = emailSchema.safeParse({email});//passing as object
   //return error if email is not valid formate
   if (!parsed.success) {
-    throw new ApiError(httpStatus.BAD_REQUEST, "Validation error", {
+    throw new ApiError(httpStatus.BAD_REQUEST, "forgot password Validation error", {
       path: "body",
       value: z.treeifyError(parsed.error),
     });
@@ -122,7 +126,7 @@ export const verifyForgotPasswordOTPService = async (
     throw new ApiError(httpStatus.FORBIDDEN, "User account is deactivated");
   }
   // 3 check same otp and otp not expired
-  if(user.otp !==otp ){
+  if (user.otp !== otp) {
     throw new ApiError(httpStatus.BAD_REQUEST, "OTP is not valid");
   }
   if (user.otpExpiresAt && user.otpExpiresAt < new Date()) {
@@ -138,10 +142,9 @@ export const verifyForgotPasswordOTPService = async (
     statusCode: httpStatus.OK,
     success: true,
     message: "OTP verified successfully",
-    error:null,
-    data:{
-      accessToken:null,
-      user:null
+    error: null,
+    user: {
+      
     },
   };
 };
@@ -150,7 +153,7 @@ export const PasswordChangeService = async (
   email: string
 ) => {
   // 1 Find user by email
-  const user = await Admin.findOne({email});
+  const user = await Admin.findOne({ email });
   if (!user) {
     throw new ApiError(httpStatus.NOT_FOUND, "User Not found22");
   }
@@ -162,14 +165,20 @@ export const PasswordChangeService = async (
   if (!user.isForgotPasswordVerified) {
     throw new ApiError(httpStatus.BAD_REQUEST, "Please verify OTP first");
   }
- // 3 password change time valid or not
-  if (user.changePasswordExpiresAt && user.changePasswordExpiresAt < new Date()) {
-    throw new ApiError(httpStatus.BAD_REQUEST, "password change time has expired");
+  // 3 password change time valid or not
+  if (
+    user.changePasswordExpiresAt &&
+    user.changePasswordExpiresAt < new Date()
+  ) {
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      "password change time has expired"
+    );
   }
   const hashedPassword = await hashPassword(password);
-  user.password= hashedPassword;
-  user.isForgotPasswordVerified = false; 
-  user.changePasswordExpiresAt = undefined 
+  user.password = hashedPassword;
+  user.isForgotPasswordVerified = false;
+  user.changePasswordExpiresAt = undefined;
 
   await user.save();
 
@@ -177,16 +186,15 @@ export const PasswordChangeService = async (
     statusCode: httpStatus.OK,
     success: true,
     message: "password change successfully",
-    error:null,
-    data:{
-      accessToken:null,
-      user:null
+    error: null,
+    data: {
+      accessToken: null,
+      user: null,
     },
   };
 };
 //resend otp service
 export const resendOTPService = async (email: string) => {
- 
   // 1 Find user by email
   const user = await Admin.findOne({ email }).select("+password");
   if (!user) {
@@ -215,10 +223,101 @@ export const resendOTPService = async (email: string) => {
     statusCode: httpStatus.OK,
     success: true,
     message: "resend otp successfully",
-    error:null,
-    data:{
-      forgotPasswordToken:forgotPasswordToken,
-      user:null
+    error: null,
+    data: {
+      forgotPasswordToken: forgotPasswordToken,
+      user: null,
+    },
+  };
+};
+//change password from profile as known the old password
+export const changePassword_FromProfileService = async (
+  password: string,
+  email: string
+) => {
+  // 1 Find user by email
+  const user = await Admin.findOne({ email });
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, "User Not found");
+  }
+
+  // 2 Check if active
+  if (!user.isActive) {
+    throw new ApiError(httpStatus.FORBIDDEN, "User account is deactivated");
+  }
+
+  const hashedPassword = await hashPassword(password);
+  user.password = hashedPassword;
+  await user.save();
+  const accessToken = generateAccessToken({
+    id: user._id,
+    role: user.role,
+    email: user.email,
+  });
+  const userData = {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    isActive:user.isActive
+  };
+  return {
+    statusCode: httpStatus.ACCEPTED,
+    success: true,
+    message: "password change successfully from profile",
+    error: null,
+    data: {
+      accessToken,
+      user:userData,
+    },
+  };
+};
+// refresh token service
+export const refreshTokenService = async (refreshToken: string) => {
+  //verify refresh token
+  // Verify refresh token
+  const decoded = jwt.verify(refreshToken, JWT_SECRET_KEY as string);
+  if (typeof decoded === "string" || !("id" in decoded)) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Invalid token payload");
+  }
+
+  const payload = decoded as JwtPayload & {
+    id: string;
+    email: string;
+    role: string;
+  };
+
+  const accessToken = generateAccessToken({
+    id: payload.id,
+    role: payload.role,
+    email: payload.email,
+  });
+  const new_refresh_Token = generateRefreshToken({
+    id: payload.id,
+    role: payload.role,
+    email: payload.email,
+  });
+  //user info
+  const user = await Admin.findById(payload.id);
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, "User Not found");
+  }
+  const userData = {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+  };
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Access token refreshed successfully",
+    error: null,
+    new_refresh_Token:new_refresh_Token ,
+    data: {
+      accessToken: accessToken,
+      
+      user: userData,
     },
   };
 };

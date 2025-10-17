@@ -7,7 +7,7 @@ const sendResponse = <T>(res: Response, data: TResponse<T>) => {
     status: data.statusCode,
     message: data?.message,
     pagination: data.pagination,
-    error:data?.error|| null,
+    error:data?.error ||null,
     data: data.data,
   });
 };

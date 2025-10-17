@@ -3,7 +3,9 @@ import { Admin } from "./auth.model";
 import { NODEMAILER_GMAIL, NODEMAILER_GMAIL_PASSWORD, OTP_EXPIRE_TIME } from "../../config/envConfig";
 import ApiError from "../../errors/ApiError";
 import nodemailer from "nodemailer"
-export const sendCookie = (
+import { NODE_ENV } from "../../config/envConfig";
+
+export const sendRefreshCookie = (
   res: Response,
   token: string,
   cookieName: string = "refreshToken"
@@ -13,6 +15,30 @@ export const sendCookie = (
     secure: process.env.NODE_ENV === "production", // Only set cookie over HTTPS in production
     sameSite: "strict", // Helps prevent CSRF attacks
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days 
+  }); // Set the cookie
+};
+export const sendAccessCookie = (
+  res: Response,
+  token: string,
+  cookieName: string = "accessToken"
+) => {
+  res.cookie(cookieName, token, {
+    httpOnly: true, // Prevents JavaScript access to the cookie
+    secure: process.env.NODE_ENV === "production", // Only set cookie over HTTPS in production
+    sameSite: "strict", // Helps prevent CSRF attacks
+    maxAge: 60 * 60 * 1000, // 1 hour 
+  }); // Set the cookie
+};
+export const sendForgotPasswordCookie = (
+  res: Response,
+  token: string,
+  cookieName: string = "forgotPasswordToken"
+) => {
+  res.cookie(cookieName, token, {
+    httpOnly: true, // Prevents JavaScript access to the cookie
+    secure: NODE_ENV === "production", // Only set cookie over HTTPS in production
+    sameSite: "strict", // Helps prevent CSRF attacks
+    maxAge: 5 * 60 * 1000, // 5 minutes
   }); // Set the cookie
 };
 export const generateOTP = (): string => {

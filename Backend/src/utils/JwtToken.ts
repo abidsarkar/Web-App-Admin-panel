@@ -83,7 +83,7 @@ export function verifySocketToken(token: string) {
 }
 export const verifyToken = (
   authHeader: string | undefined
-): { id?: string; email?: string } => {
+): { id?: string,role?:string, email?: string } => {
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     const errorMessage = "No token provided or invalid format.";
     throw { statusCode: httpStatus.UNAUTHORIZED, message: errorMessage };
@@ -93,6 +93,7 @@ export const verifyToken = (
   try {
     const decoded = jwt.verify(token, JWT_SECRET_KEY as string) as {
       id?: string;
+      role?:string;
       email?: string;
     };
     return decoded;
