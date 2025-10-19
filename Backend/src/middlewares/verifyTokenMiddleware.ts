@@ -26,7 +26,6 @@ export const verifyRefreshTokenMiddleware = (
   try {
     // Extract from Authorization header ("Bearer <token>")
     let token = req.headers.authorization?.split(" ")[1];
-
     // Or from cookies (if stored there)
     if (!token) {
       token = req.cookies?.refreshToken || req.body?.refreshToken;
@@ -54,7 +53,7 @@ export const verifyRefreshTokenMiddleware = (
     next();
   } catch (error) {
     if (error instanceof TokenExpiredError) {
-      return next(new ApiError(httpStatus.UNAUTHORIZED, "Refresh Token has expired."));
+      return next(new ApiError(httpStatus.UNAUTHORIZED, "Refresh Token has expired.!"));
     }
 
     return next(new ApiError(httpStatus.UNAUTHORIZED, "Invalid or malformed Refresh token."));

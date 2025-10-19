@@ -1,4 +1,4 @@
-import z, { success } from "zod";
+import z from "zod";
 import {
   generateAccessToken,
   generateForgotPasswordToken,
@@ -7,7 +7,7 @@ import {
 } from "./../../utils/JwtToken";
 
 // src/services/auth.service.ts
-import { Admin } from "./auth.model";
+import { EmployerInfo } from "./auth.model";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import argon2 from "argon2";
 import ApiError from "../../errors/ApiError";
@@ -24,7 +24,7 @@ import { hashPassword } from "../../utils/hashManager";
 
 export const loginService = async (email: string, password: string) => {
   // 1️⃣ Find user by email
-  const user = await Admin.findOne({ email }).select("+password");
+  const user = await EmployerInfo.findOne({ email }).select("+password");
   if (!user) {
     throw new ApiError(httpStatus.UNAUTHORIZED, "User Not ");
   }
@@ -85,7 +85,7 @@ export const forgotPasswordService = async (email: string) => {
     });
   }
   // 2 Find user by email
-  const user = await Admin.findOne({ email }).select("+password");
+  const user = await EmployerInfo.findOne({ email }).select("+password");
   if (!user) {
     throw new ApiError(httpStatus.NOT_FOUND, "User Not found");
   }
@@ -116,7 +116,7 @@ export const verifyForgotPasswordOTPService = async (
   email: string
 ) => {
   // 1 Find user by email
-  const user = await Admin.findOne({ email }).select("+password");
+  const user = await EmployerInfo.findOne({ email }).select("+password");
   if (!user) {
     throw new ApiError(httpStatus.NOT_FOUND, "User Not found");
   }
@@ -153,7 +153,7 @@ export const PasswordChangeService = async (
   email: string
 ) => {
   // 1 Find user by email
-  const user = await Admin.findOne({ email });
+  const user = await EmployerInfo.findOne({ email });
   if (!user) {
     throw new ApiError(httpStatus.NOT_FOUND, "User Not found22");
   }
@@ -196,7 +196,7 @@ export const PasswordChangeService = async (
 //resend otp service
 export const resendOTPService = async (email: string) => {
   // 1 Find user by email
-  const user = await Admin.findOne({ email }).select("+password");
+  const user = await EmployerInfo.findOne({ email }).select("+password");
   if (!user) {
     throw new ApiError(httpStatus.NOT_FOUND, "User Not found");
   }
@@ -236,7 +236,7 @@ export const changePassword_FromProfileService = async (
   email: string
 ) => {
   // 1 Find user by email
-  const user = await Admin.findOne({ email });
+  const user = await EmployerInfo.findOne({ email });
   if (!user) {
     throw new ApiError(httpStatus.NOT_FOUND, "User Not found");
   }
@@ -298,7 +298,7 @@ export const refreshTokenService = async (refreshToken: string) => {
     email: payload.email,
   });
   //user info
-  const user = await Admin.findById(payload.id);
+  const user = await EmployerInfo.findById(payload.id);
   if (!user) {
     throw new ApiError(httpStatus.NOT_FOUND, "User Not found");
   }

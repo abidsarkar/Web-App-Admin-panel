@@ -1,21 +1,32 @@
 // src/types/user.interface.ts
-import { Document } from "mongoose";
+import { Document, Types } from "mongoose";
 
-export type AdminRole = "admin" | "superAdmin";
+export type AdminRole = "subAdmin" | "superAdmin" | "undefined";
 
-export interface IAdmin extends Document {
+export interface IEmployer extends Document {
+  _id: Types.ObjectId;
   name: string;
   email: string;
-  password: string;
   phone?: string;
+  secondaryPhoneNumber?: string;
+  address?: string;
   profilePic?: string;
+  profilePic_src?: string;
+  position?: string;
+  employer_id?: string;
   role: AdminRole;
-  otp?:string;
-  otpExpiresAt?:Date;
-  changePasswordExpiresAt?:Date;
-  isForgotPasswordVerified?:boolean;
+  password: string;
+  otp?: string;
+  otpExpiresAt?: Date;
+  changePasswordExpiresAt?: Date;
+  isForgotPasswordVerified?: boolean;
   isActive: boolean;
-  lastLoginAt:Date,
+  lastLoginAt: Date;
+  createdBy?: {
+    id: string;
+    role: string;
+    email: string;
+  };
   createdAt: Date;
   updatedAt: Date;
 

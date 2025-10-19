@@ -1,8 +1,8 @@
 // src/models/user/user.model.ts
 import mongoose, { Schema } from "mongoose";
-import { IAdmin } from "./auth.interface";
+import { IEmployer } from "./auth.interface";
 
-const adminSchema = new Schema<IAdmin>(
+const employerInformationSchema = new Schema<IEmployer>(
   {
     name: {
       type: String,
@@ -15,23 +15,44 @@ const adminSchema = new Schema<IAdmin>(
       unique: true,
       lowercase: true,
     },
-    password: {
-      type: String,
-      required: [true, "Password is required"],
-      minlength: [6, "Password must be at least 6 characters long"],
-      select: false, // hide password by default
-    },
     phone: {
       type: String,
+      required: [true, "phone number is required"],
+      maxLength: [16, "maximum length should be 16"],
+    },
+    secondaryPhoneNumber: {
+      type: String,
+      maxLength: [16, "maximum length should be 16"],
+    },
+    address: {
+      type: String,
+      maxLength: [200, "maximum length should be 200"],
     },
     profilePic: {
       type: String,
     },
+    profilePic_src: {
+      type: String,
+    },
+    position: {
+      type: String,
+    },
+    employer_id: {
+      type: String,
+      unique: [true, "Employer id should be unique"],
+    },
     role: {
       type: String,
-      enum: ["admin", "superAdmin"],
-      default: "admin",
+      enum: ["subAdmin", "superAdmin", "undefined"],
+      default: "undefined",
     },
+    password: {
+      type: String,
+      required: [false, "Password is required"],
+      minLength: [6, "Password must be at least 6 characters long"],
+      select: false, // hide password by default
+    },
+
     otp: {
       type: String,
     },
@@ -49,11 +70,19 @@ const adminSchema = new Schema<IAdmin>(
       type: Boolean,
       default: true,
     },
-    lastLoginAt:{
-      type:Date,
-    }
+    lastLoginAt: {
+      type: Date,
+    },
+   createdBy: {
+    id: { type: String },
+    role: { type: String },
+    email: { type: String },
+  },
   },
   { timestamps: true }
 );
 
-export const Admin = mongoose.model<IAdmin>("Admin", adminSchema);
+export const EmployerInfo = mongoose.model<IEmployer>(
+  "EmployerInformation",
+  employerInformationSchema
+);

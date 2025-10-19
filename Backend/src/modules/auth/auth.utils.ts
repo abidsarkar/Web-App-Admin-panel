@@ -1,5 +1,5 @@
 import { Response } from "express";
-import { Admin } from "./auth.model";
+import { EmployerInfo } from "./auth.model";
 import { NODEMAILER_GMAIL, NODEMAILER_GMAIL_PASSWORD, OTP_EXPIRE_TIME } from "../../config/envConfig";
 import ApiError from "../../errors/ApiError";
 import nodemailer from "nodemailer"
@@ -46,7 +46,7 @@ export const generateOTP = (): string => {
 };
 
 export const saveOTP = async (email: string, otp: string): Promise<void> => {
-  await Admin.findOneAndUpdate(
+  await EmployerInfo.findOneAndUpdate(
     { email },
     { otp, otpExpiresAt: new Date(Date.now() + 5 * 60 * 1000) },
     { upsert: true, new: true }

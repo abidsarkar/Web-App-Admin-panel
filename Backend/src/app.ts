@@ -7,13 +7,13 @@ import globalErrorHandler from "./middlewares/globalErrorHandler";
 import notFound from "./middlewares/notFound";
 import router from "./routes";
 import { logger, logHttpRequests } from "./logger/logger";
-
+import helmet from "helmet";
 import { template } from "./rootTemplate";
 
 // Create an Express application
 const app: Application = express();
 app.use(logHttpRequests);
-
+app.use(helmet())
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());

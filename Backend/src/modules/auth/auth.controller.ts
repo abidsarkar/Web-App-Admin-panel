@@ -182,7 +182,7 @@ export const changePassword_fromProfileController = catchAsync(
 export const refreshTokenController = catchAsync(
   async (req: Request, res: Response) => {
     const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
-    console.log(refreshToken);
+    //console.log(refreshToken);
     if (!refreshToken) {
       throw new ApiError(httpStatus.UNAUTHORIZED, "No refresh token provided");
     }

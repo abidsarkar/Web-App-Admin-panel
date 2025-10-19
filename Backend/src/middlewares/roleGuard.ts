@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import ApiError from "../errors/ApiError";
-import httpStatus from 'http-status';
+import httpStatus from "http-status";
 
 // Extend Express Request interface to include 'user'
 declare global {
@@ -19,9 +19,8 @@ export interface IUserPayload extends jwt.JwtPayload {
   email: string;
 }
 
-type Role = "admin" | "manager" | "user"| "jobSeeker" | "employer"; // Define your roles here
+type Role = "superAdmin" | "subAdmin" | "undefined"; // Define your roles here
 type Roles = Role | Role[]; // single or multiple roles
-
 
 // Middleware to guard the role
 export const guardRole = (roles: Roles) => {
@@ -29,16 +28,22 @@ export const guardRole = (roles: Roles) => {
     const token = req.headers.authorization?.split(" ")[1];
 
     if (!token) {
-      throw new ApiError(httpStatus.UNAUTHORIZED, "Access denied. No token provided.");
+      throw new ApiError(
+        httpStatus.UNAUTHORIZED,
+        "Access denied. No token provided."
+      );
     }
 
     try {
       // Decode the token and cast it to IUserPayload
-      const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY as string) as IUserPayload;
+      const decoded = jwt.verify(
+        token,
+        process.env.JWT_SECRET_KEY as string
+      ) as IUserPayload;
 
       // Attach the decoded payload to the request object
       req.user = decoded;
-      
+
       const userRole = decoded.role; // Get role from decoded token
 
       // Check if the user has one of the allowed roles
@@ -50,24 +55,43 @@ export const guardRole = (roles: Roles) => {
         return next(); // If it's a single role match, proceed to the next middleware
       }
 
-      throw new ApiError(httpStatus.FORBIDDEN, "You are not authorized to access this resource.");
-
+      throw new ApiError(
+        httpStatus.FORBIDDEN,
+        "You are not authorized to access this resource."
+      );
     } catch (error) {
-      throw new ApiError(httpStatus.UNAUTHORIZED, "Invalid token or session expired.");
+      throw new ApiError(
+        httpStatus.UNAUTHORIZED,
+        "Invalid token or session expired."
+      );
     }
   };
 };
-export const RoleCheckMiddleware = (roles: Roles) => {
+export const adminRoleCheckMiddleware = (roles: Roles) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    const token = req.headers.authorization?.split(" ")[1];
+    // Extract from Authorization header ("Bearer <token>")
+    let token = req.headers.authorization?.split(" ")[1];
+
+    // Or from cookies (if stored there)
+    if (!token) {
+      token = req.cookies?.accessToken || req.body?.accessToken;
+    }
 
     if (!token) {
-      throw new ApiError(httpStatus.UNAUTHORIZED, "Access denied. No token provided.");
+      return next(
+        new ApiError(
+          httpStatus.UNAUTHORIZED,
+          "Access denied. No Access token provided."
+        )
+      );
     }
 
     try {
       // Decode the token and cast it to IUserPayload
-      const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY as string) as IUserPayload;
+      const decoded = jwt.verify(
+        token,
+        process.env.JWT_SECRET_KEY as string
+      ) as IUserPayload;
 
       // Attach the decoded payload to the request object
       req.user = decoded;
@@ -83,10 +107,15 @@ export const RoleCheckMiddleware = (roles: Roles) => {
         return next(); // If it's a single role match, proceed to the next middleware
       }
 
-      throw new ApiError(httpStatus.FORBIDDEN, "You are not authorized to access this resource.");
-
+      throw new ApiError(
+        httpStatus.FORBIDDEN,
+        "You are not authorized to access this resource."
+      );
     } catch (error) {
-      throw new ApiError(httpStatus.UNAUTHORIZED, "Invalid token or session expired.");
+      throw new ApiError(
+        httpStatus.UNAUTHORIZED,
+        "You are not authorized to access this resource!."
+      );
     }
   };
 };
