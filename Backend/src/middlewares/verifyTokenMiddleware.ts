@@ -26,6 +26,7 @@ export const verifyRefreshTokenMiddleware = (
   try {
     // Extract from Authorization header ("Bearer <token>")
     let token = req.headers.authorization?.split(" ")[1];
+    //console.log(token)
     // Or from cookies (if stored there)
     if (!token) {
       token = req.cookies?.refreshToken || req.body?.refreshToken;

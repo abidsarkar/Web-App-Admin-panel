@@ -56,10 +56,10 @@ export const createEmployerSchema = z.object({
 });
 
 export const getEmployerInfoSchema = z.object({
-  email: z
-    .string()
-    .trim()
-    .email()
-    .optional(),
+  email: z.string().trim().email().optional(),
   employer_id: z.string().trim().optional(),
 });
+export const deleteEmployerInfoSchema = z.object({
+  email: z.string().trim().email(),
+  employer_id: z.string().trim(),
+}).strict();

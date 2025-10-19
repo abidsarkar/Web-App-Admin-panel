@@ -77,6 +77,8 @@ const employerInformationSchema = new Schema<IEmployer>(
     id: { type: String },
     role: { type: String },
     email: { type: String },
+    updatedBy: { type: String },
+    updatedAt: { type: Date },
   },
   },
   { timestamps: true }

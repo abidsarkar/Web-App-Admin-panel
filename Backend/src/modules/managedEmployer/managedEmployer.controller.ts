@@ -8,11 +8,14 @@ import { sendAccessCookie, sendRefreshCookie } from "../auth/auth.utils";
 import z from "zod";
 import {
   createEmployerSchema,
+  deleteEmployerInfoSchema,
   getEmployerInfoSchema,
 } from "./managedEmployer.zodSchema";
 import {
   createEmployerService,
+  deleteEmployeeInformationService,
   getEmployeeInformationService,
+  updateEmployeeInformationService,
 } from "./managedEmployer.service";
 
 export const createEmployerController = catchAsync(
@@ -26,6 +29,7 @@ export const createEmployerController = catchAsync(
         errors: z.treeifyError(parsed.error),
       });
     }
+    
     //console.log(parsed.data.role,"admin id from access token")
     const admin_id = req.user?.id; //supper admin id form accessToken
     const admin_role = req.user?.role; //supper admin role form accessToken
@@ -82,6 +86,74 @@ export const getEmployerInfoController = catchAsync(
       data: {
         accessToken: data?.accessToken,
         employer: data?.employee,
+        user: data?.user,
+      },
+    });
+  }
+);
+export const updateEmployerInfoController = catchAsync(
+  async (req: Request, res: Response) => {
+    const parsed = createEmployerSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "update employee information Validation Error",
+        errors: z.treeifyError(parsed.error),
+      });
+    }
+    //console.log(parsed.data.role,"admin id from access token")
+    const admin_id = req.user?.id; //supper admin id form accessToken
+    const admin_role = req.user?.role; //supper admin role form accessToken
+    const admin_email = req.user?.email; //supper admin email form accessToken
+    const { statusCode, success, message, error, data } =
+      await updateEmployeeInformationService(
+        parsed.data,
+        admin_id!,
+        admin_role!,
+        admin_email!
+      );
+    sendAccessCookie(res, data?.accessToken);
+    sendResponse(res, {
+      statusCode,
+      success,
+      message,
+      error,
+      data: {
+        accessToken: data?.accessToken,
+        employer: data?.employee,
+        user: data?.user,
+      },
+    });
+  }
+);
+export const deleteEmployerInfoController = catchAsync(
+  async (req: Request, res: Response) => {
+    const parsed = deleteEmployerInfoSchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "delete employee information Validation Error",
+        errors: z.treeifyError(parsed.error),
+      });
+    }
+    const admin_id = req.user?.id; //supper admin id form accessToken
+    const admin_role = req.user?.role; //supper admin role form accessToken
+    const admin_email = req.user?.email; //supper admin email form accessToken
+    const { statusCode, success, message, error, data } =
+      await deleteEmployeeInformationService(
+        parsed.data,
+        admin_id!,
+        admin_role!,
+        admin_email!
+      );
+    sendAccessCookie(res, data?.accessToken);
+    sendResponse(res, {
+      statusCode,
+      success,
+      message,
+      error,
+      data: {
+        accessToken: data?.accessToken,
         user: data?.user,
       },
     });

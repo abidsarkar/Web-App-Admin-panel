@@ -26,6 +26,8 @@ export interface IEmployer extends Document {
     id: string;
     role: string;
     email: string;
+    updatedBy:string;
+    updatedAt:Date;
   };
   createdAt: Date;
   updatedAt: Date;
