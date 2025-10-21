@@ -9,6 +9,7 @@ import z from "zod";
 import {
   createEmployerSchema,
   deleteEmployerInfoSchema,
+  getAllEmployerInfoSchema,
   getEmployerInfoSchema,
   updateEmployerSchema,
   uploadProfilePictureSchema,
@@ -16,6 +17,7 @@ import {
 import {
   createEmployerService,
   deleteEmployeeInformationService,
+  getAllEmployeeInformationService,
   getEmployeeInformationService,
   updateEmployeeInformationService,
   updateEmployeeProfilePicService,
@@ -98,6 +100,43 @@ export const getEmployerInfoController = catchAsync(
       data: {
         accessToken: data?.accessToken,
         employer: data?.employee,
+        user: data?.user,
+      },
+    });
+  }
+);
+//get all employee with pagination
+export const getAllEmployerInfoController = catchAsync(
+  async (req: Request, res: Response) => {
+    const parsed = getAllEmployerInfoSchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "get all employee information Validation Error",
+        errors: z.treeifyError(parsed.error),
+      });
+    }
+    //console.log(parsed.data.role,"admin id from access token")
+    const admin_id = req.user?.id; //supper admin id form accessToken
+    const admin_role = req.user?.role; //supper admin role form accessToken
+    const admin_email = req.user?.email; //supper admin email form accessToken
+    const { statusCode, success, message, error, data } =
+      await getAllEmployeeInformationService(
+        parsed.data,
+        admin_id!,
+        admin_role!,
+        admin_email!
+      );
+    sendAccessCookie(res, data?.accessToken);
+    sendResponse(res, {
+      statusCode,
+      success,
+      message,
+      error,
+      data: {
+        accessToken: data?.accessToken,
+        pagination:data?.pagination,
+        employer: data?.employees,
         user: data?.user,
       },
     });

@@ -12,6 +12,7 @@ import {
   createEmployerSchema,
   deleteEmployerInfoSchema,
   fileSchema,
+  getAllEmployerInfoSchema,
   getEmployerInfoSchema,
   updateEmployerSchema,
   uploadProfilePictureSchema,
@@ -19,6 +20,7 @@ import {
 import { sendCreateAccountEmail } from "./managedEmployer.utils";
 import { hashPassword } from "../../utils/hashManager";
 import path from "path";
+import { error } from "console";
 
 export const createEmployerService = async (
   data: z.infer<typeof createEmployerSchema>,
@@ -176,7 +178,71 @@ export const getEmployeeInformationService = async (
     },
   };
 };
+//get all employee ony from super admin
+export const getAllEmployeeInformationService = async (
+  data: z.infer<typeof getAllEmployerInfoSchema>,
+  admin_id: string,
+  admin_role: string,
+  admin_email: string
+) => {
+  if (admin_role !== "superAdmin") {
+    throw new ApiError(
+      httpStatus.UNAUTHORIZED,
+      "You don't have access to view employee list"
+    );
+  }
+  // 1️⃣ Find all employee who is not role:supperAdmin user by email with pagination
+  const { page, limit, search, isActive } = data;
+  const query: any = {
+    role: { $ne: "superAdmin" }, // exclude superAdmin
+  };
+   if (isActive !== undefined) query.isActive = isActive;
+ if (search) {
+    query.$or = [
+      { name: { $regex: search, $options: "i" } },
+      { email: { $regex: search, $options: "i" } },
+      { employer_id: { $regex: search, $options: "i" } },
+    ];
+  }
+  const skip = (page - 1) * limit;
+  const [employees, total] = await Promise.all([
+    EmployerInfo.find(query)
+      .select("-password -otp -otpExpiresAt -changePasswordExpiresAt -__v -isForgotPasswordVerified")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    EmployerInfo.countDocuments(query),
+  ]);
 
+  const accessToken = generateAccessToken({
+    id: admin_id,
+    role: admin_role,
+    email: admin_email,
+  });
+
+
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Employee list retrieved successfully!",
+    error:null,
+    data: {
+      accessToken,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+      employees,
+      user: {
+        id: admin_id,
+        role: admin_role,
+        email: admin_email,
+      },
+    },
+  };
+};
 //update employee information
 export const updateEmployeeInformationService = async (
   data: z.infer<typeof updateEmployerSchema>,
@@ -315,13 +381,17 @@ export const updateEmployeeProfilePicService = async (
   }
   //!logic for delete old image and upload the new one
   //delete
-    // 🧹 Delete old profile picture if exists
+  // 🧹 Delete old profile picture if exists
   if (existingEmployee.profilePicture?.filePathURL) {
-    const oldPath = path.join(process.cwd(), existingEmployee.profilePicture.filePathURL);
-    if(oldPath==="public/uploads/profile_pictures/defaultProfilePictureAADD.png"){
-
-    }
-    else if(fs.existsSync(oldPath)) {
+    const oldPath = path.join(
+      process.cwd(),
+      existingEmployee.profilePicture.filePathURL
+    );
+    if (
+      oldPath ===
+      "public/uploads/profile_pictures/defaultProfilePictureAADD.png"
+    ) {
+    } else if (fs.existsSync(oldPath)) {
       fs.unlinkSync(oldPath);
     }
   }
