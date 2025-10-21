@@ -9,6 +9,7 @@ import { TextModel } from "./text.model";
 import { createTextSchema } from "./text.zodSchema";
 import z from "zod";
 import { EmployerInfo } from "../auth/auth.model";
+import { error } from "console";
 
 export const createOrUpdateTextService = async (
   data: z.infer<typeof createTextSchema>,
@@ -86,5 +87,30 @@ export const createOrUpdateTextService = async (
         email: admin_email,
       },
     },
+  };
+};
+export const getTextService = async (fields?: string[]) => {
+  // If no fields are specified, fetch all
+  const projection = fields?.length
+    ? fields.reduce((acc, field) => {
+        acc[field] = 1; // 1 = include this field
+        return acc;
+      }, {} as Record<string, 1>)
+    : {};
+
+  const text = await TextModel.findOne({}, projection).lean();
+
+  if (!text) {
+    throw new ApiError(httpStatus.NOT_FOUND, "No text document found");
+  }
+
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: fields?.length
+      ? `Fetched selected fields: ${fields.join(", ")}`
+      : "Fetched full text document",
+    error:null,
+    data: text,
   };
 };

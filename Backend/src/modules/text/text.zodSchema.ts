@@ -141,6 +141,7 @@ export const textSchema = z.object({
   updatedAt: z.date().optional(),
 });
 
+
 // Partial schema for updates (all fields optional)
 export const updateTextSchema = textSchema.partial();
 

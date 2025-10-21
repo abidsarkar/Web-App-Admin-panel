@@ -6,7 +6,7 @@ import ApiError from '../../errors/ApiError';
 import { sendAccessCookie, sendRefreshCookie } from '../auth/auth.utils';
 import z from 'zod';
 import { createTextSchema } from './text.zodSchema';
-import { createOrUpdateTextService } from './text.service';
+import { createOrUpdateTextService, getTextService } from './text.service';
 
 
 export const createOrUpdateTextController = catchAsync(
@@ -44,3 +44,22 @@ export const createOrUpdateTextController = catchAsync(
     });
   }
 );
+export const getTextController = catchAsync(async (req: Request, res: Response) => {
+  const { fields } = req.query;
+
+  // Parse "fields" query param → string[] (e.g., "aboutUs,address")
+  const fieldArray =
+    typeof fields === "string"
+      ? fields.split(",").map((f) => f.trim()).filter(Boolean)
+      : [];
+
+  const { statusCode, success, message,error, data } = await getTextService(fieldArray);
+
+  sendResponse(res, {
+    statusCode,
+    success,
+    message,
+    error,
+    data,
+  });
+});
