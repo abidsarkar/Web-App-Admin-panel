@@ -10,8 +10,12 @@ export interface IEmployer extends Document {
   phone?: string;
   secondaryPhoneNumber?: string;
   address?: string;
-  profilePic?: string;
-  profilePic_src?: string;
+  profilePicture?: {
+    filePathURL: string;
+    fileOriginalName: string;
+    fileServerName: string;
+    pathA: string;
+  };
   position?: string;
   employer_id?: string;
   role: AdminRole;

@@ -26,7 +26,8 @@ app.use(
 );
 
 app.use(express.static("public"));
-
+// ✅ Serve static files from root-level "public" folder
+app.use("/public", express.static(path.join(__dirname, "../public")));
 //application router
 app.use(router);
 

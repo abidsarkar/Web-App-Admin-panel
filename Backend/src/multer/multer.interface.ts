@@ -7,6 +7,7 @@ export type MulterFile = {
   destination: string;
   filename: string;
   path: string;
+  buffer:any;
 };
 
 // Define an interface for the expected shape of req.files.

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_PROFILE_PIC_SIZE } from "../../config/envConfig";
 export const passwordSchema = z
   .string({ message: "password is required in string formate" })
   .min(6, { message: "Password must be at least 6 characters long" })
@@ -32,14 +33,6 @@ export const createEmployerSchema = z.object({
     .min(1, { message: "address number cannot be empty" })
     .max(200, { message: "address must be under 200 character" })
     .optional(), //! this is for optional check if not come from body zod ignore
-  profilePic: z
-    .string({ message: "profilePic must be in string" })
-    .min(1, { message: "profilePic cannot be empty" })
-    .optional(), //! this is for optional check if not come from body zod ignore
-  profilePic_src: z
-    .string({ message: "profilePic_src must be in string" })
-    .min(1, { message: "profilePic_src cannot be empty" })
-    .optional(), //! this is for optional check if not come from body zod ignore
   position: z
     .string({ message: "position must be in string" })
     .min(1, { message: "position cannot be empty" })
@@ -51,15 +44,104 @@ export const createEmployerSchema = z.object({
   role: z
     .union([z.enum(["subAdmin", "superAdmin", "undefined"]), z.undefined()])
     .optional(), //! this is for optional check if not come from body zod ignore
-  isActive: z.boolean().optional(),
+  isActive: z
+    .preprocess((val) => {
+      if (val === "true") return true;
+      if (val === "false") return false;
+      return val;
+    }, z.boolean())
+    .optional(),
   password: passwordSchema.optional(),
+});
+//update body part
+export const updateEmployerSchema = z.object({
+  name: z
+    .string()
+    .max(50, { message: "name must be under 50 character" })
+    .optional(),
+  email: z.string({ message: "email is required" }).trim().email(),
+  phone: z
+    .string()
+    .max(18, {
+      message:
+        "to much number character for phone number use a valid phone number",
+    })
+    .optional(), //! optional for update
+  secondaryPhoneNumber: z
+    .string({ message: "secondaryPhoneNumber must be in string" })
+    .min(1, { message: "secondaryPhoneNumber cannot be empty" })
+    .max(18, {
+      message:
+        "to much number character for secondaryPhoneNumber use a valid phone number",
+    })
+    .optional(), //! this is for optional check if not come from body zod ignore
+  address: z
+    .string({ message: "address must be in string" })
+    .min(1, { message: "address number cannot be empty" })
+    .max(200, { message: "address must be under 200 character" })
+    .optional(), //! this is for optional check if not come from body zod ignore
+  position: z
+    .string({ message: "position must be in string" })
+    .min(1, { message: "position cannot be empty" })
+    .optional(), //! this is for optional check if not come from body zod ignore
+  employer_id: z
+    .string()
+    .min(1, { message: "employer_id cannot be empty" })
+    .max(20, { message: "employer_id must be under 20 character" })
+    .optional(),
+  role: z
+    .union([z.enum(["subAdmin", "superAdmin", "undefined"]), z.undefined()])
+    .optional(), //! this is for optional check if not come from body zod ignore
+  isActive: z
+    .preprocess((val) => {
+      if (val === "true") return true;
+      if (val === "false") return false;
+      return val;
+    }, z.boolean())
+    .optional(),
 });
 
 export const getEmployerInfoSchema = z.object({
   email: z.string().trim().email().optional(),
   employer_id: z.string().trim().optional(),
 });
-export const deleteEmployerInfoSchema = z.object({
-  email: z.string().trim().email(),
-  employer_id: z.string().trim(),
-}).strict();
+export const deleteEmployerInfoSchema = z
+  .object({
+    email: z.string().trim().email(),
+    employer_id: z.string().trim(),
+  })
+  .strict();
+
+const ACCEPTED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/jpg",
+  "image/webp",
+  "image/avif",
+];
+
+export const uploadProfilePictureSchema = z.object({
+  profilePicture: z
+    .file()
+    .optional() // Make the file optional
+    .refine(
+      (file) => !file || file.size <= MAX_PROFILE_PIC_SIZE,
+      `File size must be less than ${MAX_PROFILE_PIC_SIZE / (1024 * 1024)}MB`
+    )
+    .refine(
+      (file) => !file || ACCEPTED_IMAGE_TYPES.includes(file.type),
+      `File must be one of ${ACCEPTED_IMAGE_TYPES.join(", ")}`
+    ),
+});
+export const fileSchema = z.object({
+  fieldname: z.string(),
+  originalname: z.string(),
+  encoding: z.string(),
+  mimetype: z.string(),
+  destination: z.any().optional(),
+  filename: z.string(),
+  path: z.string().optional(),
+  buffer: z.any().optional(), // or path if you save files
+  size: z.number(),
+});

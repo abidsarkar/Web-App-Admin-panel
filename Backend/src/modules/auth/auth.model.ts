@@ -28,11 +28,23 @@ const employerInformationSchema = new Schema<IEmployer>(
       type: String,
       maxLength: [200, "maximum length should be 200"],
     },
-    profilePic: {
-      type: String,
-    },
-    profilePic_src: {
-      type: String,
+    profilePicture: {
+      filePathURL: {
+        type: String,
+        default: "/public/uploads/profile_pictures/defaultProfilePictureAADD.png",
+        required: false,
+      },
+      fileOriginalName: {
+        type: String,
+        default: "defaultProfilePictureAADD.png",
+        required: false,
+      },
+      fileServerName: {
+        type: String,
+        default: "1745471655982-763482898.png",
+        required: false,
+      },
+      pathA: { type: String, required: false },
     },
     position: {
       type: String,
@@ -73,13 +85,13 @@ const employerInformationSchema = new Schema<IEmployer>(
     lastLoginAt: {
       type: Date,
     },
-   createdBy: {
-    id: { type: String },
-    role: { type: String },
-    email: { type: String },
-    updatedBy: { type: String },
-    updatedAt: { type: Date },
-  },
+    createdBy: {
+      id: { type: String },
+      role: { type: String },
+      email: { type: String },
+      updatedBy: { type: String },
+      updatedAt: { type: Date },
+    },
   },
   { timestamps: true }
 );

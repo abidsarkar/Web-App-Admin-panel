@@ -1,3 +1,4 @@
+import fs from "fs";
 import z, { email } from "zod";
 import argon2 from "argon2";
 import httpStatus from "http-status";
@@ -10,13 +11,18 @@ import {
 import {
   createEmployerSchema,
   deleteEmployerInfoSchema,
+  fileSchema,
   getEmployerInfoSchema,
+  updateEmployerSchema,
+  uploadProfilePictureSchema,
 } from "./managedEmployer.zodSchema";
 import { sendCreateAccountEmail } from "./managedEmployer.utils";
 import { hashPassword } from "../../utils/hashManager";
+import path from "path";
 
 export const createEmployerService = async (
   data: z.infer<typeof createEmployerSchema>,
+  profilePictureData: z.infer<typeof fileSchema> | null,
   admin_id: string,
   admin_role: string,
   admin_email: string
@@ -48,11 +54,17 @@ export const createEmployerService = async (
   if (password) {
     hashedPassword = await hashPassword(password);
   }
+  //profile picture upload logic
 
   // 2️⃣ Create new Employer (Zod already validated the fields)
   const newEmployer = new EmployerInfo({
     ...data,
     password: hashedPassword,
+    profilePicture: {
+      filePathURL: `public/uploads/profile_pictures/${profilePictureData?.filename}`,
+      fileOriginalName: profilePictureData?.originalname,
+      fileServerName: profilePictureData?.filename,
+    },
     createdBy: {
       id: admin_id,
       role: admin_role,
@@ -67,7 +79,6 @@ export const createEmployerService = async (
     role: admin_role,
     email: admin_email,
   });
-
   // 4️⃣ Prepare response
   const employerData = {
     id: newEmployer._id,
@@ -75,6 +86,11 @@ export const createEmployerService = async (
     isActive: newEmployer.isActive,
     ...data,
     password: undefined,
+    profilePicture: {
+      filePathURL: `public/uploads/profile_pictures/${profilePictureData?.filename}`,
+      fileOriginalName: profilePictureData?.originalname,
+      fileServerName: profilePictureData?.filename,
+    },
   };
   // 📧 Send welcome email (with TEMP password, not hashed)
   if (password) {
@@ -163,7 +179,7 @@ export const getEmployeeInformationService = async (
 
 //update employee information
 export const updateEmployeeInformationService = async (
-  data: z.infer<typeof createEmployerSchema>,
+  data: z.infer<typeof updateEmployerSchema>,
   admin_id: string,
   admin_role: string,
   admin_email: string
@@ -181,7 +197,7 @@ export const updateEmployeeInformationService = async (
     );
   }
   // 🧹 Remove sensitive fields that shouldn't be updated
-  const { email, password, ...updateData } = data;
+  const { email, ...updateData } = data;
   const { employer_id } = data;
 
   // 1️⃣ Find user by email
@@ -195,8 +211,15 @@ export const updateEmployeeInformationService = async (
       "User not found! Use a valid employee id or email."
     );
   }
-
-  //console.log(updateData) //this return the user input data only
+  if (existingEmployee.employer_id !== employer_id) {
+    const existingEmployeeId = await EmployerInfo.exists({ employer_id });
+    if (existingEmployeeId) {
+      throw new ApiError(
+        httpStatus.NOT_FOUND,
+        "Employee id is already exist for other employee use unique one"
+      );
+    }
+  }
   // 🚫 Preserve the original email and update only allowed fields
   const updatePayload: any = {
     ...updateData,
@@ -209,7 +232,6 @@ export const updateEmployeeInformationService = async (
       updatedAt: new Date(),
     },
   };
-  ///console.log("update payload from db",updatePayload) //this is from database
   // Update the existing employee
   const updatedEmployee = await EmployerInfo.findByIdAndUpdate(
     existingEmployee._id,
@@ -226,24 +248,25 @@ export const updateEmployeeInformationService = async (
       "Failed to update employee information"
     );
   }
+  // Convert to plain JS object
+  const userObj = updatedEmployee.toObject();
 
+  // Remove sensitive fields
+  const {
+    password,
+    __v,
+    isForgotPasswordVerified,
+    otp,
+    otpExpiresAt,
+    changePasswordExpiresAt,
+    ...safeUser
+  } = userObj;
   // 🔑 Generate access token for admin (if needed)
   const accessToken = generateAccessToken({
     id: admin_id,
     role: admin_role,
     email: admin_email,
   });
-
-  // Prepare response - exclude password
-  const updatedEmployerData = {
-    id: updatedEmployee._id,
-    email: updatedEmployee.email, // original preserved email
-    role: updatedEmployee.role,
-    isActive: updatedEmployee.isActive,
-    createdBy: updatedEmployee.createdBy,
-    ...updateData,
-    password: undefined,
-  };
 
   return {
     statusCode: httpStatus.OK,
@@ -252,7 +275,7 @@ export const updateEmployeeInformationService = async (
     error: null,
     data: {
       accessToken,
-      employee: updatedEmployerData,
+      employee: safeUser,
       user: {
         id: admin_id,
         role: admin_role,
@@ -263,6 +286,107 @@ export const updateEmployeeInformationService = async (
 };
 //! for later change superAdmin role is with otp
 //! for now superAdmin can not be inactive and can be change as subAdmin then change
+export const updateEmployeeProfilePicService = async (
+  data: z.infer<typeof getEmployerInfoSchema>,
+  profilePictureData: z.infer<typeof fileSchema>,
+  admin_id: string,
+  admin_role: string,
+  admin_email: string
+) => {
+  if (admin_role !== "superAdmin") {
+    throw new ApiError(
+      httpStatus.UNAUTHORIZED,
+      "You don't have access to update an employee"
+    );
+  } //!though it is already forcefully stop in the route but i use
+  if (!profilePictureData) throw new ApiError(400, "No file uploaded");
+  // 🧹 Remove sensitive fields that shouldn't be updated
+  const { email, employer_id } = data;
+  // 1️⃣ Find user by email
+  const existingEmployee =
+    (await EmployerInfo.findOne({ email }).select("+password")) ||
+    (await EmployerInfo.findOne({ employer_id }).select("+password"));
+
+  if (!existingEmployee) {
+    throw new ApiError(
+      httpStatus.NOT_FOUND,
+      "User not found! Use a valid employee id or email."
+    );
+  }
+  //!logic for delete old image and upload the new one
+  //delete
+    // 🧹 Delete old profile picture if exists
+  if (existingEmployee.profilePicture?.filePathURL) {
+    const oldPath = path.join(process.cwd(), existingEmployee.profilePicture.filePathURL);
+    if(oldPath==="public/uploads/profile_pictures/defaultProfilePictureAADD.png"){
+
+    }
+    else if(fs.existsSync(oldPath)) {
+      fs.unlinkSync(oldPath);
+    }
+  }
+
+  //change the info first
+  const updatePayload = {
+    profilePicture: {
+      filePathURL: `public/uploads/profile_pictures/${profilePictureData?.filename}`,
+      fileOriginalName: profilePictureData?.originalname,
+      fileServerName: profilePictureData?.filename,
+    },
+    createdBy: {
+      updatedBy: admin_id,
+      updatedAt: new Date(),
+    },
+  };
+  // Update the profile picture employee
+  const updatedEmployee = await EmployerInfo.findByIdAndUpdate(
+    existingEmployee._id,
+    updatePayload,
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
+  if (!updatedEmployee) {
+    throw new ApiError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      "Failed to update employee profile picture"
+    );
+  }
+  // Convert to plain JS object
+  // Remove sensitive fields
+  const {
+    password,
+    __v,
+    otp,
+    otpExpiresAt,
+    changePasswordExpiresAt,
+    isForgotPasswordVerified,
+    ...safeUser
+  } = updatedEmployee.toObject();
+  // 🔑 Generate access token for admin (if needed)
+  const accessToken = generateAccessToken({
+    id: admin_id,
+    role: admin_role,
+    email: admin_email,
+  });
+
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Employee profile picture updated successfully!",
+    error: null,
+    data: {
+      accessToken,
+      employee: safeUser,
+      user: {
+        id: admin_id,
+        role: admin_role,
+        email: admin_email,
+      },
+    },
+  };
+};
 export const deleteEmployeeInformationService = async (
   data: z.infer<typeof deleteEmployerInfoSchema>,
   admin_id: string,
@@ -282,11 +406,13 @@ export const deleteEmployeeInformationService = async (
     );
   }
   // 🧹 Remove sensitive fields that shouldn't be updated
-  const { email,employer_id } = data;
-  console.log(email,employer_id)
+  const { email, employer_id } = data;
+  console.log(email, employer_id);
   // 1️⃣ Find user by email
-  const existingEmployee =
-    (await EmployerInfo.findOneAndDelete({ email ,employer_id}).select("+password"));
+  const existingEmployee = await EmployerInfo.findOneAndDelete({
+    email,
+    employer_id,
+  }).select("+password");
 
   if (!existingEmployee) {
     throw new ApiError(
