@@ -99,6 +99,7 @@ export const updateEmployerSchema = z.object({
       return val;
     }, z.boolean())
     .optional(),
+  password: passwordSchema.optional(),
 });
 
 export const getEmployerInfoSchema = z.object({
@@ -121,6 +122,8 @@ export const getAllEmployerInfoSchema = z.object({
     if (val === "false") return false;
     return val;
   }, z.boolean().optional()), // optional filter
+  sort: z.string().optional(), // e.g. "createdAt"
+  order: z.enum(["asc", "desc"]).optional(), // default desc
 });
 export const deleteEmployerInfoSchema = z
   .object({

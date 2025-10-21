@@ -36,27 +36,40 @@ export const createEmployerService = async (
       "You don't have access to create new employee"
     );
   }
-  // 1️⃣ Find user by email
-  const { email, password } = data;
-  // 🔍 Check if employee already exists
+
+  // 1️⃣ Find user by email and check if employee already exists
+  const { email, password, employer_id } = data;
   const existingUser = await EmployerInfo.findOne({ email }).select(
     "+password"
   );
+
   if (existingUser) {
     throw new ApiError(httpStatus.CONFLICT, "Employee already registered");
   }
+
   if (data.role === "superAdmin" && data.isActive == false) {
     throw new ApiError(
       httpStatus.UNAUTHORIZED,
       "You can not inactive a supper Admin"
     );
   }
+  // Check if employer_id is being changed and if it already exists for another employee
+  const existingEmployeeId = await EmployerInfo.findOne({
+    employer_id,
+  });
+
+  if (existingEmployeeId) {
+    throw new ApiError(
+      httpStatus.CONFLICT,
+      "Employee id is already exist for other employee use unique one"
+    );
+  }
+
   // 🔐 Hash password if provided
   let hashedPassword: string | undefined;
   if (password) {
     hashedPassword = await hashPassword(password);
   }
-  //profile picture upload logic
 
   // 2️⃣ Create new Employer (Zod already validated the fields)
   const newEmployer = new EmployerInfo({
@@ -75,25 +88,25 @@ export const createEmployerService = async (
   });
 
   await newEmployer.save();
-  // 3️⃣ Generate Access Token for admin (optional)
+
+  // Remove sensitive fields
+  const {
+    password: savedPassword,
+    __v,
+    isForgotPasswordVerified,
+    otp,
+    otpExpiresAt,
+    changePasswordExpiresAt,
+    ...safeUser
+  } = newEmployer.toObject();
+
+  // 🔑 Generate Access Token for admin
   const accessToken = generateAccessToken({
     id: admin_id,
     role: admin_role,
     email: admin_email,
   });
-  // 4️⃣ Prepare response
-  const employerData = {
-    id: newEmployer._id,
-    role: newEmployer.role,
-    isActive: newEmployer.isActive,
-    ...data,
-    password: undefined,
-    profilePicture: {
-      filePathURL: `public/uploads/profile_pictures/${profilePictureData?.filename}`,
-      fileOriginalName: profilePictureData?.originalname,
-      fileServerName: profilePictureData?.filename,
-    },
-  };
+
   // 📧 Send welcome email (with TEMP password, not hashed)
   if (password) {
     await sendCreateAccountEmail(newEmployer.email, newEmployer.name, password);
@@ -104,6 +117,7 @@ export const createEmployerService = async (
       "Your admin will set your password soon."
     );
   }
+
   return {
     statusCode: httpStatus.CREATED,
     success: true,
@@ -111,7 +125,7 @@ export const createEmployerService = async (
     error: null,
     data: {
       accessToken,
-      employer: employerData,
+      employer: safeUser,
       user: {
         id: admin_id,
         role: admin_role,
@@ -139,11 +153,6 @@ export const getEmployeeInformationService = async (
     );
   }
 
-  // 🧹 Remove sensitive fields
-
-  // Convert to plain JS object
-  const userObj = user.toObject();
-
   // Remove sensitive fields
   const {
     password,
@@ -153,7 +162,7 @@ export const getEmployeeInformationService = async (
     otpExpiresAt,
     changePasswordExpiresAt,
     ...safeUser
-  } = userObj;
+  } = user.toObject();
 
   // 🔑 Generate access token for this employee
   const accessToken = generateAccessToken({
@@ -192,12 +201,12 @@ export const getAllEmployeeInformationService = async (
     );
   }
   // 1️⃣ Find all employee who is not role:supperAdmin user by email with pagination
-  const { page, limit, search, isActive } = data;
+  const { page, limit, search, isActive, sort, order } = data;
   const query: any = {
     role: { $ne: "superAdmin" }, // exclude superAdmin
   };
-   if (isActive !== undefined) query.isActive = isActive;
- if (search) {
+  if (isActive !== undefined) query.isActive = isActive;
+  if (search) {
     query.$or = [
       { name: { $regex: search, $options: "i" } },
       { email: { $regex: search, $options: "i" } },
@@ -205,10 +214,15 @@ export const getAllEmployeeInformationService = async (
     ];
   }
   const skip = (page - 1) * limit;
+  const sortField = sort || "createdAt";
+  const sortOrder = order === "asc" ? 1 : -1;
+
   const [employees, total] = await Promise.all([
     EmployerInfo.find(query)
-      .select("-password -otp -otpExpiresAt -changePasswordExpiresAt -__v -isForgotPasswordVerified")
-      .sort({ createdAt: -1 })
+      .select(
+        "-password -otp -otpExpiresAt -changePasswordExpiresAt -__v -isForgotPasswordVerified"
+      )
+      .sort({ [sortField]: sortOrder }) // ✅ Sorting applied here
       .skip(skip)
       .limit(limit),
     EmployerInfo.countDocuments(query),
@@ -220,12 +234,79 @@ export const getAllEmployeeInformationService = async (
     email: admin_email,
   });
 
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Employee list retrieved successfully!",
+    error: null,
+    data: {
+      accessToken,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+      employees,
+      user: {
+        id: admin_id,
+        role: admin_role,
+        email: admin_email,
+      },
+    },
+  };
+};
+export const getAllSupAdminEmployeeInformationService = async (
+  data: z.infer<typeof getAllEmployerInfoSchema>,
+  admin_id: string,
+  admin_role: string,
+  admin_email: string
+) => {
+  if (admin_role !== "superAdmin") {
+    throw new ApiError(
+      httpStatus.UNAUTHORIZED,
+      "You don't have access to view employee list"
+    );
+  }
+  // 1️⃣ Find all employee who is not role:supperAdmin user by email with pagination
+  const { page, limit, search, isActive, sort, order } = data;
+  const query: any = {
+    role: { $in: "superAdmin" }, // include only superAdmin
+  };
+  if (isActive !== undefined) query.isActive = isActive;
+  if (search) {
+    query.$or = [
+      { name: { $regex: search, $options: "i" } },
+      { email: { $regex: search, $options: "i" } },
+      { employer_id: { $regex: search, $options: "i" } },
+    ];
+  }
+  const skip = (page - 1) * limit;
+  const sortField = sort || "createdAt";
+  const sortOrder = order === "asc" ? 1 : -1;
+
+  const [employees, total] = await Promise.all([
+    EmployerInfo.find(query)
+      .select(
+        "-password -otp -otpExpiresAt -changePasswordExpiresAt -__v -isForgotPasswordVerified"
+      )
+      .sort({ [sortField]: sortOrder }) // ✅ Sorting applied here
+      .skip(skip)
+      .limit(limit),
+    EmployerInfo.countDocuments(query),
+  ]);
+
+  const accessToken = generateAccessToken({
+    id: admin_id,
+    role: admin_role,
+    email: admin_email,
+  });
 
   return {
     statusCode: httpStatus.OK,
     success: true,
     message: "Employee list retrieved successfully!",
-    error:null,
+    error: null,
     data: {
       accessToken,
       pagination: {
@@ -256,17 +337,18 @@ export const updateEmployeeInformationService = async (
       "You don't have access to update a employee"
     );
   }
+
   if (data.role === "superAdmin" && data.isActive == false) {
     throw new ApiError(
       httpStatus.UNAUTHORIZED,
       "You can not inactive a supper Admin"
     );
   }
-  // 🧹 Remove sensitive fields that shouldn't be updated
-  const { email, ...updateData } = data;
-  const { employer_id } = data;
 
-  // 1️⃣ Find user by email
+  // 🧹 Extract fields from data
+  const { email, employer_id, password, ...updateData } = data;
+
+  // 1️⃣ Find user by email or employer_id
   const existingEmployee =
     (await EmployerInfo.findOne({ email }).select("+password")) ||
     (await EmployerInfo.findOne({ employer_id }).select("+password"));
@@ -277,21 +359,37 @@ export const updateEmployeeInformationService = async (
       "User not found! Use a valid employee id or email."
     );
   }
-  if (existingEmployee.employer_id !== employer_id) {
-    const existingEmployeeId = await EmployerInfo.exists({ employer_id });
+
+  // Check if employer_id is being changed and if it already exists for another employee
+  if (employer_id && existingEmployee.employer_id !== employer_id) {
+    const existingEmployeeId = await EmployerInfo.findOne({
+      employer_id,
+      _id: { $ne: existingEmployee._id },
+    });
     if (existingEmployeeId) {
       throw new ApiError(
-        httpStatus.NOT_FOUND,
+        httpStatus.CONFLICT,
         "Employee id is already exist for other employee use unique one"
       );
     }
   }
-  // 🚫 Preserve the original email and update only allowed fields
+
+  // 🔐 Hash password if provided
+  let hashedPassword: string | undefined;
+  if (password) {
+    hashedPassword = await hashPassword(password);
+  }
+
+  // 🚫 Prepare update payload
   const updatePayload: any = {
     ...updateData,
+    // Only include employer_id if it's provided and different
+    ...(employer_id && { employer_id }),
+    // Only include hashed password if password was provided
+    ...(password && { password: hashedPassword }),
     // Keep the original email - don't allow it to be changed
     email: existingEmployee.email,
-    // Update the updatedBy field
+    // Update the updatedBy field - fix the structure
     createdBy: {
       ...existingEmployee.createdBy, // preserve existing createdBy data
       updatedBy: admin_id,
@@ -306,7 +404,7 @@ export const updateEmployeeInformationService = async (
       new: true, // return updated document
       runValidators: true, // run schema validations
     }
-  );
+  ).select("+password"); // Select password to handle the destructuring later
 
   if (!updatedEmployee) {
     throw new ApiError(
@@ -315,18 +413,16 @@ export const updateEmployeeInformationService = async (
     );
   }
   // Convert to plain JS object
-  const userObj = updatedEmployee.toObject();
-
   // Remove sensitive fields
   const {
-    password,
+    password: userPassword,
     __v,
     isForgotPasswordVerified,
     otp,
     otpExpiresAt,
     changePasswordExpiresAt,
     ...safeUser
-  } = userObj;
+  } = updatedEmployee.toObject();
   // 🔑 Generate access token for admin (if needed)
   const accessToken = generateAccessToken({
     id: admin_id,
@@ -477,7 +573,6 @@ export const deleteEmployeeInformationService = async (
   }
   // 🧹 Remove sensitive fields that shouldn't be updated
   const { email, employer_id } = data;
-  console.log(email, employer_id);
   // 1️⃣ Find user by email
   const existingEmployee = await EmployerInfo.findOneAndDelete({
     email,

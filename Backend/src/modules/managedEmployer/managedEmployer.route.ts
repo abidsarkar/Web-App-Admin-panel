@@ -14,6 +14,7 @@ import {
   createEmployerController,
   deleteEmployerInfoController,
   getAllEmployerInfoController,
+  getAllSupAdminEmployerInfoController,
   getEmployerInfoController,
   updateEmployerInfoController,
   updateEmployerProfilePicController,
@@ -32,7 +33,18 @@ router.post(
   createEmployerController
 );
 router.get("/get", verifyAccessTokenMiddleware, getEmployerInfoController);
-router.get("/get-all",adminRoleCheckMiddleware("superAdmin"), verifyAccessTokenMiddleware, getAllEmployerInfoController);
+router.get(
+  "/get-all",
+  adminRoleCheckMiddleware("superAdmin"),
+  verifyAccessTokenMiddleware,
+  getAllEmployerInfoController
+);
+router.get(
+  "/get-all-sup",
+  adminRoleCheckMiddleware("superAdmin"),
+  verifyAccessTokenMiddleware,
+  getAllSupAdminEmployerInfoController
+);
 router.patch(
   "/update",
   adminRoleCheckMiddleware("superAdmin"),
