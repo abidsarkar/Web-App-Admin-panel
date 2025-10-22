@@ -9,6 +9,7 @@ import {
 import z, { email } from "zod";
 import {
   createCategorySchema,
+  createSubCategorySchema,
   updateCategorySchema,
 } from "./category.zodSchema";
 import { EmployerInfo } from "../auth/auth.model";
@@ -98,14 +99,17 @@ export const updateCategoryService = async (
   if (admin_role !== "editor" && admin_role !== "superAdmin") {
     throw new ApiError(
       httpStatus.UNAUTHORIZED,
-      "You don't have access to update new employee"
+      "You don't have access to update employee"
     );
   }
   // ✅ Extract fields from request body
   const { categoryId, newCategoryId, newCategoryName } = data;
   if (!newCategoryName && !newCategoryId) {
-  throw new ApiError(httpStatus.BAD_REQUEST, "Please provide at least one field to update,\"newCategoryId\",\"newCategoryName\"");
-}
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      'Please provide at least one field to update,"newCategoryId","newCategoryName"'
+    );
+  }
   // 🧩 2️⃣ Check if admin exists and is active
   const existingUser = await EmployerInfo.findOne({
     email: admin_email,
@@ -172,4 +176,95 @@ export const updateCategoryService = async (
     },
   };
 };
-//create sub
+//create sub category
+export const createSubCategoryService = async (
+  data: z.infer<typeof createSubCategorySchema>,
+  admin_id: string,
+  admin_role: string,
+  admin_email: string
+) => {
+  // 🔒 Role-based access control
+  if (admin_role !== "editor" && admin_role !== "superAdmin") {
+    throw new ApiError(
+      httpStatus.UNAUTHORIZED,
+      "You don't have access to create a subcategory"
+    );
+  }
+
+  const { subCategoryName, subCategoryId, categoryId } = data;
+
+  // 🧩 1️⃣ Validate admin
+  const existingUser = await EmployerInfo.findOne({
+    email: admin_email,
+  }).select("-password");
+  if (!existingUser) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Employee not found");
+  }
+  if (admin_role === "editor" && existingUser.isActive === false) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Your account is deactivated");
+  }
+
+  // 🔍 2️⃣ Check parent category exists
+  const existingCategory = await CategoryModel.findOne({ categoryId });
+  if (!existingCategory) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Category ID does not exist");
+  }
+
+  // 🔁 3️⃣ Check subCategoryId is unique
+  const existingSub = await SubCategoryModel.findOne({ subCategoryId });
+  if (existingSub) {
+    throw new ApiError(httpStatus.CONFLICT, "SubCategory ID already exists");
+  }
+
+  // 🧱 4️⃣ Create subcategory
+  const newSubCategory = new SubCategoryModel({
+    subCategoryName,
+    subCategoryId,
+    categoryId,
+    createdBy: {
+      id: admin_id,
+      role: admin_role,
+      email: admin_email,
+    },
+  });
+  await newSubCategory.save();
+
+  // 🔗 5️⃣ Link to parent category
+  if (!existingCategory.subCategories) {
+    existingCategory.subCategories = [];
+  }
+  existingCategory.subCategories.push(newSubCategory._id);
+  existingCategory.updatedBy = {
+    id: admin_id,
+    role: admin_role,
+    email: admin_email,
+    updatedAt: new Date(),
+  };
+  await existingCategory.save();
+
+  // 🧹 6️⃣ Remove sensitive fields
+  const { __v, ...safeSubCategory } = newSubCategory.toObject();
+
+  // 🔑 Generate Access Token for admin
+  const accessToken = generateAccessToken({
+    id: admin_id,
+    role: admin_role,
+    email: admin_email,
+  });
+
+  return {
+    statusCode: httpStatus.CREATED,
+    success: true,
+    message: "New sub-category Created Successfully",
+    error: null,
+    data: {
+      accessToken,
+      subcategory: safeSubCategory,
+      user: {
+        id: admin_id,
+        role: admin_role,
+        email: admin_email,
+      },
+    },
+  };
+};
