@@ -108,15 +108,15 @@ export const createEmployerService = async (
   });
 
   // 📧 Send welcome email (with TEMP password, not hashed)
-  if (password) {
-    await sendCreateAccountEmail(newEmployer.email, newEmployer.name, password);
-  } else {
-    await sendCreateAccountEmail(
-      newEmployer.email,
-      newEmployer.name,
-      "Your admin will set your password soon."
-    );
-  }
+  // if (password) {
+  //   //!await sendCreateAccountEmail(newEmployer.email, newEmployer.name, password);
+  // } else {
+  // !  await sendCreateAccountEmail(
+  //     newEmployer.email,
+  //     newEmployer.name,
+  //     "Your admin will set your password soon."
+  //   );
+  // }
 
   return {
     statusCode: httpStatus.CREATED,

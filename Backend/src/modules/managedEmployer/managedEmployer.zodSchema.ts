@@ -42,7 +42,7 @@ export const createEmployerSchema = z.object({
     .min(1, { message: "employer_id cannot be empty" })
     .max(20, { message: "employer_id must be under 20 character" }),
   role: z
-    .union([z.enum(["subAdmin", "superAdmin", "undefined"]), z.undefined()])
+    .union([z.enum(["subAdmin", "superAdmin","editor", "undefined"]), z.undefined()])
     .optional(), //! this is for optional check if not come from body zod ignore
   isActive: z
     .preprocess((val) => {
@@ -90,7 +90,7 @@ export const updateEmployerSchema = z.object({
     .max(20, { message: "employer_id must be under 20 character" })
     .optional(),
   role: z
-    .union([z.enum(["subAdmin", "superAdmin", "undefined"]), z.undefined()])
+    .union([z.enum(["subAdmin", "superAdmin","editor", "undefined"]), z.undefined()])
     .optional(), //! this is for optional check if not come from body zod ignore
   isActive: z
     .preprocess((val) => {

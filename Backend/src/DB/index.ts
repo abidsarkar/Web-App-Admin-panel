@@ -8,7 +8,7 @@ const admin = {
   secondaryPhoneNumber: "",
   address: "abcd address",
   profilePicture: {
-    filePathURL: "/public/uploads/profile_pictures/person.png",
+    filePathURL: "/public/uploads/profile_pictures/defaultProfilePictureAADD.png",
     fileOriginalName: "defaultProfilePictureAADD.png",
     fileServerName: "1745471655982-763482898.png",
   },
@@ -18,6 +18,7 @@ const admin = {
   password: "1qazxsw2",
   //isDeleted: false,
 };
+
 const admin2 = {
   name: "md abid sarkar",
   email: "abidsarker.61@gmail.com",
@@ -26,7 +27,7 @@ const admin2 = {
   role: "superAdmin",
   address: "abcd address",
   profilePicture: {
-    filePathURL: "/public/uploads/profile_pictures/person.png",
+    filePathURL: "/public/uploads/profile_pictures/defaultProfilePictureAADD.png",
     fileOriginalName: "defaultProfilePictureAADD.png",
     fileServerName: "1745471655982-763482898.png",
   },
@@ -35,9 +36,25 @@ const admin2 = {
   password: "1qazxsw2",
   //isDeleted: false,
 };
-
+const editor = {
+  name: "editor 1",
+  email: "abcd2@gmail.com",
+  phone: "+8801712345677",
+  secondaryPhoneNumber: "",
+  role: "editor",
+  address: "abcd address",
+  profilePicture: {
+    filePathURL: "/public/uploads/profile_pictures/defaultProfilePictureAADD.png",
+    fileOriginalName: "defaultProfilePictureAADD.png",
+    fileServerName: "1745471655982-763482898.png",
+  },
+  position: "Chair person",
+  employer_id: "3",
+  password: "1qazxsw2",
+  //isDeleted: false,
+};
 export const seedSuperAdmin = async () => {
-  const admins = [admin, admin2];
+  const admins = [admin, admin2,editor];
 
   for (const adminData of admins) {
     const isAdminExists = await EmployerInfo.findOne({

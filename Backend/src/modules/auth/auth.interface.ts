@@ -1,7 +1,7 @@
 // src/types/user.interface.ts
 import { Document, Types } from "mongoose";
 
-export type AdminRole = "subAdmin" | "superAdmin" | "undefined";
+export type AdminRole = "subAdmin" | "superAdmin" |"editor"| "undefined";
 
 export interface IEmployer extends Document {
   _id: Types.ObjectId;

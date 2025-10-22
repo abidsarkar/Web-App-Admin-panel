@@ -103,7 +103,7 @@ export const forgotPasswordService = async (email: string) => {
   user.otpExpiresAt = otpExpiresAt;
   user.isForgotPasswordVerified = false; // Set the forgot password verification flag to true
   // 4. Send OTP email to the user
-  await sendForgotPasswordOTPEmail(email, otp, user.name);
+  //!await sendForgotPasswordOTPEmail(email, otp, user.name);
   // Save the user document with the new OTP and expiration time
   await user.save();
   const forgotPasswordToken = generateForgotPasswordToken({
@@ -213,7 +213,7 @@ export const resendOTPService = async (email: string) => {
   user.otpExpiresAt = otpExpiresAt;
   user.isForgotPasswordVerified = false; // Set the forgot password verification flag to true
   // 4. Send OTP email to the user
-  await sendResendOTPEmail(email, otp, user.name);
+  //!await sendResendOTPEmail(email, otp, user.name);
   // Save the user document with the new OTP and expiration time
   await user.save();
   const forgotPasswordToken = generateForgotPasswordToken({

@@ -55,7 +55,7 @@ const employerInformationSchema = new Schema<IEmployer>(
     },
     role: {
       type: String,
-      enum: ["subAdmin", "superAdmin", "undefined"],
+      enum: ["subAdmin", "superAdmin","editor", "undefined"],
       default: "undefined",
     },
     password: {
@@ -93,7 +93,9 @@ const employerInformationSchema = new Schema<IEmployer>(
       updatedAt: { type: Date },
     },
   },
-  { timestamps: true }
+  { timestamps: true,
+    versionKey:false
+   }
 );
 
 export const EmployerInfo = mongoose.model<IEmployer>(

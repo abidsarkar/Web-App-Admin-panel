@@ -19,7 +19,7 @@ export interface IUserPayload extends jwt.JwtPayload {
   email: string;
 }
 
-type Role = "superAdmin" | "subAdmin" | "undefined"; // Define your roles here
+type Role = "superAdmin" | "subAdmin"|"editor" | "undefined"; // Define your roles here
 type Roles = Role | Role[]; // single or multiple roles
 
 // Middleware to guard the role

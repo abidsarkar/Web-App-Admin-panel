@@ -35,7 +35,7 @@ async function connectDB() {
 
 async function startServer() {
   await connectDB();
-// 🦸 Seed Super Admin
+//! 🦸 Seed Super Admin
   //await seedSuperAdmin();
   // Start HTTP server
   server = createServer(app);
