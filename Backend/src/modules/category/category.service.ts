@@ -11,6 +11,7 @@ import {
   createCategorySchema,
   createSubCategorySchema,
   updateCategorySchema,
+  updateSubCategorySchema,
 } from "./category.zodSchema";
 import { EmployerInfo } from "../auth/auth.model";
 
@@ -260,6 +261,80 @@ export const createSubCategoryService = async (
     data: {
       accessToken,
       subcategory: safeSubCategory,
+      user: {
+        id: admin_id,
+        role: admin_role,
+        email: admin_email,
+      },
+    },
+  };
+};
+export const updateSubCategoryService = async (
+  data: z.infer<typeof updateSubCategorySchema>,
+  admin_id: string,
+  admin_role: string,
+  admin_email: string
+) => {
+  if (admin_role !== "editor" && admin_role !== "superAdmin") {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Access denied.");
+  }
+
+  const existingUser = await EmployerInfo.findOne({ email: admin_email });
+  if (!existingUser) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Admin not found.");
+  }
+
+  if (admin_role === "editor" && existingUser.isActive === false) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Your account is deactivated.");
+  }
+
+  const { subCategoryId, subCategoryName, categoryId } = data;
+
+  const subCategory = await SubCategoryModel.findOne({ subCategoryId });
+  if (!subCategory) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Sub-category not found.");
+  }
+
+  // ✅ Update fields
+  if (subCategoryName) subCategory.subCategoryName = subCategoryName;
+  if (categoryId) subCategory.categoryId = categoryId;
+
+  // ✅ Update metadata
+  subCategory.updatedBy = {
+    id: admin_id,
+    role: admin_role,
+    email: admin_email,
+    updatedAt: new Date(),
+  };
+
+  await subCategory.save();
+
+  // ✅ If categoryId changed, update the parent category references
+  if (categoryId) {
+    const newCategory = await CategoryModel.findOne({ categoryId });
+    if (newCategory) {
+      if (!newCategory.subCategories) newCategory.subCategories = [];
+      if (!newCategory.subCategories.includes(subCategory._id)) {
+        newCategory.subCategories.push(subCategory._id);
+        await newCategory.save();
+      }
+    }
+  }
+
+  const accessToken = generateAccessToken({
+    id: admin_id,
+    role: admin_role,
+    email: admin_email,
+  });
+
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Sub-category updated successfully",
+    error: null,
+    data: {
+      accessToken,
+      subCategory,
       user: {
         id: admin_id,
         role: admin_role,

@@ -6,8 +6,8 @@ import ApiError from "../../errors/ApiError";
 
 import { sendAccessCookie } from "../auth/auth.utils";
 import z from "zod";
-import { createCategorySchema, createSubCategorySchema, updateCategorySchema } from "./category.zodSchema";
-import { createCategoryService, createSubCategoryService, updateCategoryService } from "./category.service";
+import { createCategorySchema, createSubCategorySchema, updateCategorySchema, updateSubCategorySchema } from "./category.zodSchema";
+import { createCategoryService, createSubCategoryService, updateCategoryService, updateSubCategoryService } from "./category.service";
 
 export const createCategoryController = catchAsync(
   async (req: Request, res: Response) => {
@@ -111,6 +111,38 @@ export const createSubCategoryController = catchAsync(
         subcategory: data?.subcategory,
         user: data?.user,
       },
+    });
+  }
+);
+export const updateSubCategoryController = catchAsync(
+  async (req: Request, res: Response) => {
+    const parsed = updateSubCategorySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "Update Sub Category Validation Error",
+        errors: z.treeifyError(parsed.error),
+      });
+    }
+
+    const admin_id = req.user?.id!;
+    const admin_role = req.user?.role!;
+    const admin_email = req.user?.email!;
+
+    const { statusCode, success, message, error, data } =
+      await updateSubCategoryService(
+        parsed.data,
+        admin_id,
+        admin_role,
+        admin_email
+      );
+
+    sendResponse(res, {
+      statusCode,
+      success,
+      message,
+      error,
+      data,
     });
   }
 );
