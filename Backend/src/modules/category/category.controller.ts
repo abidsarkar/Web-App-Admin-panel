@@ -6,8 +6,23 @@ import ApiError from "../../errors/ApiError";
 
 import { sendAccessCookie } from "../auth/auth.utils";
 import z from "zod";
-import { createCategorySchema, createSubCategorySchema, updateCategorySchema, updateSubCategorySchema } from "./category.zodSchema";
-import { createCategoryService, createSubCategoryService, updateCategoryService, updateSubCategoryService } from "./category.service";
+import {
+  createCategorySchema,
+  createSubCategorySchema,
+  deleteCategorySchema,
+  getCategorySchema,
+  updateCategorySchema,
+  updateSubCategorySchema,
+} from "./category.zodSchema";
+import {
+  createCategoryService,
+  createSubCategoryService,
+  deleteCategoryService,
+  getCategoryForAdminService,
+  getCategoryService,
+  updateCategoryService,
+  updateSubCategoryService,
+} from "./category.service";
 
 export const createCategoryController = catchAsync(
   async (req: Request, res: Response) => {
@@ -19,7 +34,7 @@ export const createCategoryController = catchAsync(
         errors: z.treeifyError(parsed.error),
       });
     }
-   
+
     const admin_id = req.user?.id; //supper admin id form accessToken
     const admin_role = req.user?.role; //supper admin role form accessToken
     const admin_email = req.user?.email; //supper admin email form accessToken
@@ -38,6 +53,67 @@ export const createCategoryController = catchAsync(
       error,
       data: {
         accessToken: data?.accessToken,
+        category: data?.category,
+        user: data?.user,
+      },
+    });
+  }
+);
+//get category with conditional sub category
+export const getCategoryController = catchAsync(
+  async (req: Request, res: Response) => {
+    const parsed = getCategorySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "get category Validation Error",
+        errors: z.treeifyError(parsed.error),
+      });
+    }
+
+    const admin_id = req.user?.id; //supper admin id form accessToken
+    const admin_role = req.user?.role; //supper admin role form accessToken
+    const admin_email = req.user?.email; //supper admin email form accessToken
+    const { statusCode, success, message, error, data } =
+      await getCategoryService(parsed.data);
+    sendResponse(res, {
+      statusCode,
+      success,
+      message,
+      error,
+      data: {
+        category: data?.category,
+      },
+    });
+  }
+);
+export const getCategoryForAdminController = catchAsync(
+  async (req: Request, res: Response) => {
+    const parsed = getCategorySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "get category for admin Validation Error",
+        errors: z.treeifyError(parsed.error),
+      });
+    }
+
+    const admin_id = req.user?.id; //supper admin id form accessToken
+    const admin_role = req.user?.role; //supper admin role form accessToken
+    const admin_email = req.user?.email; //supper admin email form accessToken
+    const { statusCode, success, message, error, data } =
+      await getCategoryForAdminService(
+        parsed.data,
+        admin_id!,
+        admin_role!,
+        admin_email!
+      );
+    sendResponse(res, {
+      statusCode,
+      success,
+      message,
+      error,
+      data: {
         category: data?.category,
         user: data?.user,
       },
@@ -78,6 +154,40 @@ export const updateCategoryController = catchAsync(
     });
   }
 );
+export const deleteCategoryController = catchAsync(
+  async (req: Request, res: Response) => {
+    const parsed = deleteCategorySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "delete category Validation Error",
+        errors: z.treeifyError(parsed.error),
+      });
+    }
+    const admin_id = req.user?.id; //supper admin id form accessToken
+    const admin_role = req.user?.role; //supper admin role form accessToken
+    const admin_email = req.user?.email; //supper admin email form accessToken
+    const { statusCode, success, message, error, data } =
+      await deleteCategoryService(
+        parsed.data,
+        admin_id!,
+        admin_role!,
+        admin_email!
+      );
+    sendAccessCookie(res, data?.accessToken);
+    sendResponse(res, {
+      statusCode,
+      success,
+      message,
+      error,
+      data: {
+        accessToken: data?.accessToken,
+        deletedCategoryId: data?.deletedCategoryId,
+        user: data?.user,
+      },
+    });
+  }
+);
 //create sub category
 export const createSubCategoryController = catchAsync(
   async (req: Request, res: Response) => {
@@ -89,7 +199,7 @@ export const createSubCategoryController = catchAsync(
         errors: z.treeifyError(parsed.error),
       });
     }
-   
+
     const admin_id = req.user?.id; //supper admin id form accessToken
     const admin_role = req.user?.role; //supper admin role form accessToken
     const admin_email = req.user?.email; //supper admin email form accessToken
