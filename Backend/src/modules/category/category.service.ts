@@ -11,7 +11,9 @@ import {
   createCategorySchema,
   createSubCategorySchema,
   deleteCategorySchema,
+  deleteSubCategorySchema,
   getCategorySchema,
+  getSubCategorySchema,
   updateCategorySchema,
   updateSubCategorySchema,
 } from "./category.zodSchema";
@@ -547,6 +549,185 @@ export const updateSubCategoryService = async (
     data: {
       accessToken,
       subCategory,
+      user: {
+        id: admin_id,
+        role: admin_role,
+        email: admin_email,
+      },
+    },
+  };
+};
+export const getSubCategoryService = async (
+  data: z.infer<typeof getSubCategorySchema>
+) => {
+  const { subCategoryId, category } = data;
+
+  let result;
+
+  // ✅ 1️⃣ If no subCategoryId → return all subcategories
+  if (!subCategoryId) {
+    result = await SubCategoryModel.find().select(
+      "-__v -createdBy -updatedBy -createdAt -updatedAt"
+    );
+  }
+
+  // ✅ 2️⃣ If subCategoryId provided → get that subcategory
+  else {
+    const existingSubCategory = await SubCategoryModel.findOne({
+      subCategoryId,
+    }).select("-__v -createdBy -updatedBy -createdAt -updatedAt");
+
+    if (!existingSubCategory) {
+      throw new ApiError(httpStatus.NOT_FOUND, "Sub Category not found");
+    }
+
+    // ✅ 3️⃣ If category=true → also fetch category info for that subcategory
+    if (category) {
+      const parentCategory = await CategoryModel.findOne({
+        categoryId: existingSubCategory.categoryId,
+      }).select("-__v -createdBy -updatedBy -createdAt -updatedAt");
+
+      result = {
+        subCategory: existingSubCategory,
+        category: parentCategory || null,
+      };
+    } else {
+      // ✅ Only return subcategory info
+      result = existingSubCategory;
+    }
+  }
+
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Sub-category fetched successfully",
+    error: null,
+    data: {
+      result,
+    },
+  };
+};
+
+//get all category information with created by for admin only
+export const getSubCategoryForAdminService = async (
+  data: z.infer<typeof getSubCategorySchema>,
+  admin_id: string,
+  admin_role: string,
+  admin_email: string
+) => {
+  // 🔒 Role-based access control
+  if (
+    admin_role !== "editor" &&
+    admin_role !== "superAdmin" &&
+    admin_role !== "subAdmin"
+  ) {
+    throw new ApiError(
+      httpStatus.UNAUTHORIZED,
+      "You don't have access to view full details of category"
+    );
+  }
+  const { subCategoryId, category } = data;
+
+  let result;
+
+  // ✅ 1️⃣ If subCategoryId not provided → return all categories
+  if (!subCategoryId) {
+    result = await SubCategoryModel.find().select("-__v");
+  }
+
+  // ✅ 2️⃣ If categoryId provided
+  else {
+    const existingSubCategory = await SubCategoryModel.findOne({
+      subCategoryId,
+    });
+
+    if (!existingSubCategory) {
+      throw new ApiError(httpStatus.NOT_FOUND, "sub Category not found");
+    }
+
+    // ✅ 3️⃣ If subCategory=true → populate subcategories
+    if (category) {
+      const parentCategory = await CategoryModel.findOne({
+        categoryId: existingSubCategory.categoryId,
+      });
+      result = {
+        subCategory: existingSubCategory,
+        category: parentCategory || null,
+      };
+    } else {
+      // ✅ 4️⃣ Otherwise, return category only
+      result = existingSubCategory;
+    }
+  }
+
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Sub-category fetched for admin successfully",
+    error: null,
+    data: {
+      result,
+      user: {
+        id: admin_id,
+        role: admin_role,
+        email: admin_email,
+      },
+    },
+  };
+};
+export const deleteSubCategoryService = async (
+  data: z.infer<typeof deleteSubCategorySchema>,
+  admin_id: string,
+  admin_role: string,
+  admin_email: string
+) => {
+  // 🔒 Role-based access
+  if (admin_role !== "editor" && admin_role !== "superAdmin") {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Access denied.");
+  }
+
+  // 🧩 Verify admin exists
+  const existingUser = await EmployerInfo.findOne({ email: admin_email });
+  if (!existingUser) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Admin not found.");
+  }
+
+  if (admin_role === "editor" && existingUser.isActive === false) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Your account is deactivated.");
+  }
+
+  const { subCategoryId } = data;
+
+  // 🔍 Check if subcategory exists
+  const subCategory = await SubCategoryModel.findOne({ subCategoryId });
+  if (!subCategory) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Sub-category not found.");
+  }
+
+  // ✅ Remove subcategory reference from parent category
+  await CategoryModel.updateOne(
+    { categoryId: subCategory.categoryId },
+    { $pull: { subCategories: subCategory._id } }
+  );
+
+  // 🗑️ Delete the subcategory itself
+  await SubCategoryModel.deleteOne({ _id: subCategory._id });
+
+  // 🎫 Generate new access token
+  const accessToken = generateAccessToken({
+    id: admin_id,
+    role: admin_role,
+    email: admin_email,
+  });
+
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Sub-category deleted successfully",
+    error: null,
+    data: {
+      accessToken,
+      deletedSubCategoryId: subCategoryId,
       user: {
         id: admin_id,
         role: admin_role,

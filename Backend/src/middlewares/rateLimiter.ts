@@ -31,6 +31,12 @@ export const getAllPostsRateLimiter = rateLimit({
   message: "Too many requests, please try again later.",
   statusCode: httpStatus.TOO_MANY_REQUESTS, // Use 429 status code
 });
+export const publicRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30, // Allow 30 requests per 15 minutes
+  message: "Too many requests, please try again later.",
+  statusCode: httpStatus.TOO_MANY_REQUESTS, // Use 429 status code
+});
 //get text rate limiter
 export const getAllTextRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes

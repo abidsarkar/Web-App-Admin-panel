@@ -8,7 +8,8 @@ export const createCategorySchema = z.object({
 //get category
 export const getCategorySchema = z.object({
   categoryId: z.string().trim().min(2).max(50).optional(),
-  subCategory: z.preprocess((val) => {
+  subCategory: z
+    .preprocess((val) => {
       if (val === "true") return true;
       if (val === "false") return false;
       return val;
@@ -16,7 +17,7 @@ export const getCategorySchema = z.object({
     .optional(),
 });
 export const updateCategorySchema = z.object({
-  newCategoryName : z.string().trim().min(2).max(100).optional(),
+  newCategoryName: z.string().trim().min(2).max(100).optional(),
   categoryId: z.string().trim().min(2).max(50),
   newCategoryId: z.string().trim().min(2).max(50).optional(),
 });
@@ -34,4 +35,17 @@ export const updateSubCategorySchema = z.object({
   newSubCategoryId: z.string().trim().min(2).max(50).optional(), // which subcategory to update
   subCategoryName: z.string().trim().min(2).max(100).optional(), // fields that can be updated
   newCategoryId: z.string().trim().min(2).max(50).optional(),
+});
+export const getSubCategorySchema = z.object({
+  subCategoryId: z.string().trim().min(2).max(50).optional(),
+  category: z
+    .preprocess((val) => {
+      if (val === "true") return true;
+      if (val === "false") return false;
+      return val;
+    }, z.boolean())
+    .optional(),
+});
+export const deleteSubCategorySchema = z.object({
+  subCategoryId: z.string().trim().min(2).max(50),
 });
