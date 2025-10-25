@@ -275,29 +275,70 @@ export const updateSubCategoryService = async (
   admin_role: string,
   admin_email: string
 ) => {
+  // 🔒 Role-based access control
   if (admin_role !== "editor" && admin_role !== "superAdmin") {
     throw new ApiError(httpStatus.UNAUTHORIZED, "Access denied.");
   }
 
+  // 🧩 Verify admin
   const existingUser = await EmployerInfo.findOne({ email: admin_email });
   if (!existingUser) {
     throw new ApiError(httpStatus.NOT_FOUND, "Admin not found.");
   }
-
   if (admin_role === "editor" && existingUser.isActive === false) {
     throw new ApiError(httpStatus.UNAUTHORIZED, "Your account is deactivated.");
   }
 
-  const { subCategoryId, subCategoryName, categoryId } = data;
+  // 🧾 Extract data
+  const { subCategoryId, newSubCategoryId, subCategoryName, newCategoryId } = data;
 
+  // 🔍 Find existing subcategory
   const subCategory = await SubCategoryModel.findOne({ subCategoryId });
   if (!subCategory) {
     throw new ApiError(httpStatus.NOT_FOUND, "Sub-category not found.");
   }
 
-  // ✅ Update fields
-  if (subCategoryName) subCategory.subCategoryName = subCategoryName;
-  if (categoryId) subCategory.categoryId = categoryId;
+  // ✅ 1️⃣ Check if newSubCategoryId already exists (if provided)
+  if (newSubCategoryId) {
+    const duplicate = await SubCategoryModel.findOne({ subCategoryId: newSubCategoryId });
+    if (duplicate) {
+      throw new ApiError(httpStatus.CONFLICT, "New subCategoryId already exists.");
+    }
+    subCategory.subCategoryId = newSubCategoryId; // assign new id
+  }
+
+  // ✅ 2️⃣ Handle category change (if provided)
+  if (newCategoryId && newCategoryId !== subCategory.categoryId) {
+    const oldCategory = await CategoryModel.findOne({ categoryId: subCategory.categoryId });
+    const newCategory = await CategoryModel.findOne({ categoryId: newCategoryId });
+
+    if (!newCategory) {
+      throw new ApiError(httpStatus.NOT_FOUND, "New categoryId not found.");
+    }
+
+    // remove from old category
+    if (oldCategory && oldCategory.subCategories) {
+      oldCategory.subCategories = oldCategory.subCategories.filter(
+        (id) => !id.equals(subCategory._id)
+      );
+      await oldCategory.save();
+    }
+
+    // add to new category
+    if (!newCategory.subCategories) newCategory.subCategories = [];
+    if (!newCategory.subCategories.includes(subCategory._id)) {
+      newCategory.subCategories.push(subCategory._id);
+      await newCategory.save();
+    }
+
+    // update subcategory categoryId
+    subCategory.categoryId = newCategoryId;
+  }
+
+  // ✅ 3️⃣ Update name if provided
+  if (subCategoryName) {
+    subCategory.subCategoryName = subCategoryName;
+  }
 
   // ✅ Update metadata
   subCategory.updatedBy = {
@@ -309,24 +350,14 @@ export const updateSubCategoryService = async (
 
   await subCategory.save();
 
-  // ✅ If categoryId changed, update the parent category references
-  if (categoryId) {
-    const newCategory = await CategoryModel.findOne({ categoryId });
-    if (newCategory) {
-      if (!newCategory.subCategories) newCategory.subCategories = [];
-      if (!newCategory.subCategories.includes(subCategory._id)) {
-        newCategory.subCategories.push(subCategory._id);
-        await newCategory.save();
-      }
-    }
-  }
-
+  // ✅ Generate new token
   const accessToken = generateAccessToken({
     id: admin_id,
     role: admin_role,
     email: admin_email,
   });
 
+  // 🧾 Response
   return {
     statusCode: httpStatus.OK,
     success: true,
