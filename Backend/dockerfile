@@ -1,0 +1,27 @@
+# Use official Node.js runtime as base image
+FROM node:22-alpine3.21
+
+
+
+# Set working directory in container
+WORKDIR /app
+
+# Copy package.json and package-lock.json (or yarn.lock)
+COPY package*.json ./
+
+
+# Install dependencies
+RUN npm install
+
+# Copy all project files
+COPY . .
+
+# Create uploads directory if it doesn't exist
+RUN mkdir -p public/uploads/productCoverPicture
+RUN mkdir -p public/uploads/profile_pictures
+
+# Expose the port your app runs on
+EXPOSE 5001
+
+# Command to run your application
+CMD ["npm","run", "dev"]
