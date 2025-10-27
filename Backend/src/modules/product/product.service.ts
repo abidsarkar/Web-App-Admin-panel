@@ -8,6 +8,7 @@ import z from "zod";
 import {
   createProductSchema,
   deleteProductImageSchema,
+  deleteProductSchema,
   fileSchema,
   productIdSchema,
   replaceProductImageSchema,
@@ -91,6 +92,91 @@ export const createProductService = async (
     },
   };
 };
+//delete product service
+export const deleteProductService = async (
+  data: z.infer<typeof deleteProductSchema>,
+  admin_id: string,
+  admin_role: string,
+  admin_email: string
+) => {
+  // ✅ Role check
+  if (
+    admin_role !== "editor" &&
+    admin_role !== "superAdmin" &&
+    admin_role !== "subAdmin"
+  ) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Access denied");
+  }
+
+  const { _id } = data;
+  const product = await ProductModel.findById(_id);
+  if (!product) throw new ApiError(httpStatus.NOT_FOUND, "Product not found");
+
+  // ✅ Delete cover image if not default
+  const DEFAULT_IMAGE_PATH =
+    "public/uploads/productCoverPicture/product-image-placeholder.jpg";
+  const DEFAULT_IMAGE_NAME = "product-image-placeholder.jpg";
+
+  if (
+    product.productCoverImage?.filePathURL &&
+    product.productCoverImage.filePathURL !== DEFAULT_IMAGE_PATH &&
+    product.productCoverImage.fileOriginalName !== DEFAULT_IMAGE_NAME
+  ) {
+    const coverPath = path.join(
+      process.cwd(),
+      product.productCoverImage.filePathURL
+    );
+    if (fs.existsSync(coverPath)) {
+      try {
+        fs.unlinkSync(coverPath);
+      } catch (error) {
+        console.error(`❌ Failed to delete cover image: ${coverPath}`, error);
+      }
+    }
+  }
+
+  // ✅ Delete all productImages physically
+  if (product.productImages && product.productImages.length > 0) {
+    for (const img of product.productImages) {
+      if (img.filePathURL) {
+        const imgPath = path.join(process.cwd(), img.filePathURL);
+        if (fs.existsSync(imgPath)) {
+          try {
+            fs.unlinkSync(imgPath);
+          } catch (error) {
+            console.error(
+              `❌ Failed to delete product image: ${imgPath}`,
+              error
+            );
+          }
+        }
+      }
+    }
+  }
+
+  // ✅ Delete product from DB
+  await ProductModel.findByIdAndDelete(_id);
+
+  // 🔑 Return with new token
+  const accessToken = generateAccessToken({
+    id: admin_id,
+    role: admin_role,
+    email: admin_email,
+  });
+
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Product and all related images deleted successfully",
+    error: null,
+    data: {
+      accessToken,
+      deletedProductId: _id,
+      user: { id: admin_id, role: admin_role, email: admin_email },
+    },
+  };
+};
+
 export const uploadProductCoverPictureService = async (
   data: z.infer<typeof productIdSchema>,
   productCoverPictureData: z.infer<typeof fileSchema> | null,

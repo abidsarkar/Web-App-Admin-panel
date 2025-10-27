@@ -101,3 +101,11 @@ export const replaceProductImageSchema = z.object({
       message: "Invalid image ID",
     }),
 });
+//delete the entire product 
+export const deleteProductSchema = z.object({
+  _id: z
+    .string()
+    .refine((val) => Types.ObjectId.isValid(val), {
+      message: "Invalid product ID",
+    }),
+});

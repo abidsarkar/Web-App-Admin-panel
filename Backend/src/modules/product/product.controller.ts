@@ -1,13 +1,27 @@
-import  httpStatus  from 'http-status';
-import { Request, Response } from 'express';
-import catchAsync from '../../utils/catchAsync';
-import sendResponse from '../../utils/sendResponse';
-import ApiError from '../../errors/ApiError';
-import { sendAccessCookie } from '../auth/auth.utils';
-import z from 'zod';
-import { createProductSchema, deleteProductImageSchema, productIdSchema, replaceProductImageSchema, uploadManyProductPicSchema, uploadProductCoverPictureSchema } from './product.zodSchema';
-import { createProductService, deleteProductImageService, replaceProductImageService, uploadProductCoverPictureService, uploadProductManyPicService } from './product.service';
-
+import httpStatus from "http-status";
+import { Request, Response } from "express";
+import catchAsync from "../../utils/catchAsync";
+import sendResponse from "../../utils/sendResponse";
+import ApiError from "../../errors/ApiError";
+import { sendAccessCookie } from "../auth/auth.utils";
+import z from "zod";
+import {
+  createProductSchema,
+  deleteProductImageSchema,
+  deleteProductSchema,
+  productIdSchema,
+  replaceProductImageSchema,
+  uploadManyProductPicSchema,
+  uploadProductCoverPictureSchema,
+} from "./product.zodSchema";
+import {
+  createProductService,
+  deleteProductImageService,
+  deleteProductService,
+  replaceProductImageService,
+  uploadProductCoverPictureService,
+  uploadProductManyPicService,
+} from "./product.service";
 
 export const createProductController = catchAsync(
   async (req: Request, res: Response) => {
@@ -43,6 +57,42 @@ export const createProductController = catchAsync(
     });
   }
 );
+//delete product with image
+export const deleteProductController = catchAsync(
+  async (req: Request, res: Response) => {
+    const parsed = deleteProductSchema.safeParse(req.query);
+
+    if (!parsed.success) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "Product delete validation error",
+        errors: z.treeifyError(parsed.error),
+      });
+    }
+
+    const admin_id = req.user?.id!;
+    const admin_role = req.user?.role!;
+    const admin_email = req.user?.email!;
+
+    const { statusCode, success, message, error, data } =
+      await deleteProductService(
+        parsed.data,
+        admin_id,
+        admin_role,
+        admin_email
+      );
+
+    sendAccessCookie(res, data?.accessToken);
+    sendResponse(res, {
+      statusCode,
+      success,
+      message,
+      error,
+      data,
+    });
+  }
+);
+
 export const uploadProductCoverPicController = catchAsync(
   async (req: Request, res: Response) => {
     const parsed = productIdSchema.safeParse(req.body);
