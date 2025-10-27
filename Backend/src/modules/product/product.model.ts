@@ -17,7 +17,7 @@ const imageSchema = new Schema(
     size: { type: Number },
     pathA: { type: String },
   },
-  { _id: false }
+  { _id: true }
 );
 
 const productSchema = new Schema<IProduct>(

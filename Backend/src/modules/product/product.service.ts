@@ -1,4 +1,4 @@
-import  fs  from 'fs';
+import fs from "fs";
 import argon2 from "argon2";
 import httpStatus from "http-status";
 import ApiError from "../../errors/ApiError";
@@ -7,13 +7,16 @@ import { generateAccessToken } from "../../utils/JwtToken";
 import z from "zod";
 import {
   createProductSchema,
+  deleteProductImageSchema,
   fileSchema,
   productIdSchema,
+  replaceProductImageSchema,
+  uploadManyProductPicSchema,
 } from "./product.zodSchema";
 import { EmployerInfo } from "../auth/auth.model";
 import { CategoryModel, SubCategoryModel } from "../category/category.model";
 import { Types } from "mongoose";
-import path from 'path';
+import path from "path";
 
 export const createProductService = async (
   data: z.infer<typeof createProductSchema>,
@@ -131,21 +134,26 @@ export const uploadProductCoverPictureService = async (
   }
 
   //! Logic for delete old image if it's not the default one
-  const DEFAULT_IMAGE_PATH = "public/uploads/productCoverPicture/product-image-placeholder.jpg";
+  const DEFAULT_IMAGE_PATH =
+    "public/uploads/productCoverPicture/product-image-placeholder.jpg";
   const DEFAULT_IMAGE_NAME = "product-image-placeholder.jpg";
 
   // Check if there's an existing cover image and it's not the default one
-  if (existingProduct.productCoverImage?.filePathURL && 
-      existingProduct.productCoverImage.filePathURL !== DEFAULT_IMAGE_PATH &&
-      existingProduct.productCoverImage.fileOriginalName !== DEFAULT_IMAGE_NAME) {
-    
-    const oldImagePath = path.join(process.cwd(), existingProduct.productCoverImage.filePathURL);
-    
+  if (
+    existingProduct.productCoverImage?.filePathURL &&
+    existingProduct.productCoverImage.filePathURL !== DEFAULT_IMAGE_PATH &&
+    existingProduct.productCoverImage.fileOriginalName !== DEFAULT_IMAGE_NAME
+  ) {
+    const oldImagePath = path.join(
+      process.cwd(),
+      existingProduct.productCoverImage.filePathURL
+    );
+
     // Delete the old image file if it exists
     if (fs.existsSync(oldImagePath)) {
       try {
         fs.unlinkSync(oldImagePath);
-       // console.log(`✅ Deleted old image: ${oldImagePath}`);
+        // console.log(`✅ Deleted old image: ${oldImagePath}`);
       } catch (error) {
         console.error(`❌ Failed to delete old image: ${oldImagePath}`, error);
         // Don't throw error here - continue with update even if delete fails
@@ -202,6 +210,224 @@ export const uploadProductCoverPictureService = async (
         role: admin_role,
         email: admin_email,
       },
+    },
+  };
+};
+//upload many image for one  product
+export const uploadProductManyPicService = async (
+  data: z.infer<typeof productIdSchema>,
+  files: z.infer<typeof uploadManyProductPicSchema>,
+  admin_id: string,
+  admin_role: string,
+  admin_email: string
+) => {
+  if (
+    admin_role !== "editor" &&
+    admin_role !== "superAdmin" &&
+    admin_role !== "subAdmin"
+  ) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Access denied.");
+  }
+
+  const existingUser = await EmployerInfo.findOne({ email: admin_email });
+  if (!existingUser || existingUser.isActive === false) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Invalid or inactive user");
+  }
+
+  const objectId = new Types.ObjectId(data._id);
+  const existingProduct = await ProductModel.findById(objectId);
+  if (!existingProduct) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Product not found");
+  }
+
+  // Map new images
+  const newImages = files.map((file) => ({
+    filePathURL: `public/uploads/productImages/${file.filename}`,
+    fileOriginalName: file.originalname,
+    fileServerName: file.filename,
+    size: file.size,
+    mimetype: file.mimetype,
+  }));
+
+  // Push new images
+  const updatedProduct = await ProductModel.findByIdAndUpdate(
+    objectId,
+    {
+      $push: { productImages: { $each: newImages } },
+      $set: {
+        updatedBy: {
+          id: admin_id,
+          role: admin_role,
+          email: admin_email,
+          updatedAt: new Date(),
+        },
+      },
+    },
+    { new: true, runValidators: true }
+  );
+
+  const accessToken = generateAccessToken({
+    id: admin_id,
+    role: admin_role,
+    email: admin_email,
+  });
+
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Product images uploaded successfully",
+    error: null,
+    data: {
+      accessToken,
+      product: updatedProduct,
+      user: {
+        id: admin_id,
+        role: admin_role,
+        email: admin_email,
+      },
+    },
+  };
+};
+//delete
+export const deleteProductImageService = async (
+  data: z.infer<typeof deleteProductImageSchema>,
+  admin_id: string,
+  admin_role: string,
+  admin_email: string
+) => {
+  if (
+    admin_role !== "editor" &&
+    admin_role !== "superAdmin" &&
+    admin_role !== "subAdmin"
+  ) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Access denied");
+  }
+  // 🧩 Verify admin exists
+  const existingUser = await EmployerInfo.findOne({ email: admin_email });
+  if (!existingUser) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Admin not found.");
+  }
+
+  if (admin_role === "editor" && existingUser.isActive === false) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Your account is deactivated.");
+  }
+  const { productId, imageId } = data;
+
+  const product = await ProductModel.findById(productId);
+  if (!product) throw new ApiError(httpStatus.NOT_FOUND, "Product not found");
+
+  const image = product.productImages?.find(
+    (img: any) => img._id.toString() === imageId
+  );
+
+  if (!image) throw new ApiError(httpStatus.NOT_FOUND, "Image not found");
+
+  // Delete physical file
+  const filePath = path.join(process.cwd(), image.filePathURL);
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+  }
+
+  // Remove image from array
+  await ProductModel.findByIdAndUpdate(productId, {
+    $pull: { productImages: { _id: imageId } },
+    $set: {
+      updatedBy: {
+        id: admin_id,
+        role: admin_role,
+        email: admin_email,
+        updatedAt: new Date(),
+      },
+    },
+  });
+
+  const updatedProduct = await ProductModel.findById(productId);
+
+  const accessToken = generateAccessToken({
+    id: admin_id,
+    role: admin_role,
+    email: admin_email,
+  });
+
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Product image deleted successfully",
+    error: null,
+    data: {
+      accessToken,
+      product: updatedProduct,
+    },
+  };
+};
+export const replaceProductImageService = async (
+  data: z.infer<typeof replaceProductImageSchema>,
+  newFile: z.infer<typeof fileSchema>,
+  admin_id: string,
+  admin_role: string,
+  admin_email: string
+) => {
+  if (
+    admin_role !== "editor" &&
+    admin_role !== "superAdmin" &&
+    admin_role !== "subAdmin"
+  ) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Access denied");
+  }
+  // 🧩 Verify admin exists
+  const existingUser = await EmployerInfo.findOne({ email: admin_email });
+  if (!existingUser) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Admin not found.");
+  }
+
+  if (admin_role === "editor" && existingUser.isActive === false) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Your account is deactivated.");
+  }
+  const { productId, imageId } = data;
+
+  const product = await ProductModel.findById(productId);
+  if (!product) throw new ApiError(httpStatus.NOT_FOUND, "Product not found");
+
+  const image = product.productImages?.find(
+    (img: any) => img._id.toString() === imageId
+  );
+
+  if (!image) throw new ApiError(httpStatus.NOT_FOUND, "Image not found");
+
+  // Delete old file
+  const oldPath = path.join(process.cwd(), image.filePathURL);
+  if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+
+  // Replace image data
+  image.filePathURL = `public/uploads/productImages/${newFile.filename}`;
+  image.fileOriginalName = newFile.originalname;
+  image.fileServerName = newFile.filename;
+  image.size = newFile.size;
+  image.mimetype = newFile.mimetype;
+
+  product.updatedBy = {
+    id: admin_id,
+    role: admin_role,
+    email: admin_email,
+    updatedAt: new Date(),
+  };
+
+  await product.save();
+
+  const accessToken = generateAccessToken({
+    id: admin_id,
+    role: admin_role,
+    email: admin_email,
+  });
+
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Product image replaced successfully",
+    error: null,
+    data: {
+      accessToken,
+      product,
     },
   };
 };

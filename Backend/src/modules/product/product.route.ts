@@ -2,11 +2,13 @@ import express from "express";
 const router = express.Router();
 import {forgotPasswordRateLimiter, loginRateLimiter, otpResendRateLimiter} from "../../middlewares/rateLimiter"
 import { verifyAccessTokenMiddleware, verifyForgotPasswordTokenMiddleware, verifyRefreshTokenMiddleware } from "../../middlewares/verifyTokenMiddleware";
-import { createProductController, uploadProductCoverPicController } from "./product.controller";
-import { productCoverPictureUpload } from "../../multer/multer.upload";
+import { createProductController, deleteProductImageController, replaceProductImageController, uploadProductCoverPicController, uploadProductManyPicController } from "./product.controller";
+import { productCoverPictureUpload, uploadManyProductPic, uploadSingleReplaceImage } from "../../multer/multer.upload";
 
 
 router.post("/create",verifyAccessTokenMiddleware,createProductController);
 router.patch("/upload-cover",productCoverPictureUpload,verifyAccessTokenMiddleware,uploadProductCoverPicController);
-router.post("/upload-many",productCoverPictureUpload,verifyAccessTokenMiddleware,uploadProductCoverPicController);
+router.patch("/upload-many",uploadManyProductPic,verifyAccessTokenMiddleware,uploadProductManyPicController);
+router.delete("/delete-many",verifyAccessTokenMiddleware,deleteProductImageController);
+router.patch("/replace-many",uploadSingleReplaceImage,verifyAccessTokenMiddleware,replaceProductImageController);
 export const productRouts = router;

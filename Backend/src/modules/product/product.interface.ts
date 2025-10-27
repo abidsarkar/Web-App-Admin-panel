@@ -7,6 +7,7 @@ export interface IProduct extends Document {
   productName?: string;
   productDescription?: string;
   productCoverImage?: {
+    _id: Types.ObjectId;
     filePathURL: string;
     fileOriginalName: string;
     fileServerName: string;
@@ -16,6 +17,7 @@ export interface IProduct extends Document {
   };
   // 🖼️ Multiple Images
   productImages?: {
+    _id: Types.ObjectId;
     filePathURL: string;
     fileOriginalName: string;
     fileServerName: string;

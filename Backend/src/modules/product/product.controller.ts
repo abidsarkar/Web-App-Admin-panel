@@ -5,8 +5,8 @@ import sendResponse from '../../utils/sendResponse';
 import ApiError from '../../errors/ApiError';
 import { sendAccessCookie } from '../auth/auth.utils';
 import z from 'zod';
-import { createProductSchema, productIdSchema, uploadProductCoverPictureSchema } from './product.zodSchema';
-import { createProductService, uploadProductCoverPictureService } from './product.service';
+import { createProductSchema, deleteProductImageSchema, productIdSchema, replaceProductImageSchema, uploadManyProductPicSchema, uploadProductCoverPictureSchema } from './product.zodSchema';
+import { createProductService, deleteProductImageService, replaceProductImageService, uploadProductCoverPictureService, uploadProductManyPicService } from './product.service';
 
 
 export const createProductController = catchAsync(
@@ -85,5 +85,104 @@ export const uploadProductCoverPicController = catchAsync(
         user: data?.user,
       },
     });
+  }
+);
+//upload many image
+export const uploadProductManyPicController = catchAsync(
+  async (req: Request, res: Response) => {
+    const parsed = productIdSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "Product _id validation error",
+        errors: z.treeifyError(parsed.error),
+      });
+    }
+
+    const parsedFiles = uploadManyProductPicSchema.safeParse(req.files);
+    if (!parsedFiles.success) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "Product images validation error",
+        errors: z.treeifyError(parsedFiles.error),
+      });
+    }
+
+    const admin_id = req.user?.id;
+    const admin_role = req.user?.role;
+    const admin_email = req.user?.email;
+
+    const { statusCode, success, message, error, data } =
+      await uploadProductManyPicService(
+        parsed.data,
+        parsedFiles.data,
+        admin_id!,
+        admin_role!,
+        admin_email!
+      );
+
+    sendAccessCookie(res, data?.accessToken);
+    sendResponse(res, {
+      statusCode,
+      success,
+      message,
+      error,
+      data,
+    });
+  }
+);
+//delete image
+export const deleteProductImageController = catchAsync(
+  async (req: Request, res: Response) => {
+    const parsed = deleteProductImageSchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "Validation error",
+        errors: z.treeifyError(parsed.error),
+      });
+    }
+
+    const { statusCode, success, message, error, data } =
+      await deleteProductImageService(
+        parsed.data,
+        req.user!.id,
+        req.user!.role,
+        req.user!.email
+      );
+
+    sendAccessCookie(res, data?.accessToken);
+    sendResponse(res, { statusCode, success, message, error, data });
+  }
+);
+export const replaceProductImageController = catchAsync(
+  async (req: Request, res: Response) => {
+    const parsed = replaceProductImageSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "Validation error",
+        errors: z.treeifyError(parsed.error),
+      });
+    }
+
+    if (!req.file) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "No replacement image provided",
+      });
+    }
+
+    const { statusCode, success, message, error, data } =
+      await replaceProductImageService(
+        parsed.data,
+        req.file,
+        req.user!.id,
+        req.user!.role,
+        req.user!.email
+      );
+
+    sendAccessCookie(res, data?.accessToken);
+    sendResponse(res, { statusCode, success, message, error, data });
   }
 );

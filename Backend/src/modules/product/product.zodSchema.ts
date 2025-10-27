@@ -71,3 +71,33 @@ export const fileSchema = z.object({
   buffer: z.any().optional(), // or path if you save files
   size: z.number(),
 });
+//upload many picture
+export const uploadManyProductPicSchema = z.array(fileSchema).nonempty({
+  message: "At least one image is required",
+});
+//delete picture
+export const deleteProductImageSchema = z.object({
+  productId: z
+    .string()
+    .refine((val) => Types.ObjectId.isValid(val), {
+      message: "Invalid product ID",
+    }),
+  imageId: z
+    .string()
+    .refine((val) => Types.ObjectId.isValid(val), {
+      message: "Invalid image ID",
+    }),
+});
+//replace
+export const replaceProductImageSchema = z.object({
+  productId: z
+    .string()
+    .refine((val) => Types.ObjectId.isValid(val), {
+      message: "Invalid product ID",
+    }),
+  imageId: z
+    .string()
+    .refine((val) => Types.ObjectId.isValid(val), {
+      message: "Invalid image ID",
+    }),
+});
