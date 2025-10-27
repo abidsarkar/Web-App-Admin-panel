@@ -9,11 +9,19 @@ import router from "./routes";
 import { logger, logHttpRequests } from "./logger/logger";
 import helmet from "helmet";
 import { template } from "./rootTemplate";
-
+import { globalRateLimiter } from "./middlewares/rateLimiter";
+import mongoSanitizer, { SanitizedRequest } from 'mongo-sanitizer';
 // Create an Express application
 const app: Application = express();
+//for global no sql injection prevent
+app.use(mongoSanitizer());
+//!for global trust ip find
+//! need to study more latter
+// app.set("trust proxy", true);
+// for global rate limiting to stop brutForce
+app.use(globalRateLimiter);
 app.use(logHttpRequests);
-app.use(helmet())
+app.use(helmet());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -40,7 +48,7 @@ app.get("/", (req: Request, res: Response) => {
 // ============================================
 // ❌ Handle 404 - Unknown API routes
 // ============================================
-app.use( notFound);
+app.use(notFound);
 
 // ============================================
 // 🧱 Global Error Handler
