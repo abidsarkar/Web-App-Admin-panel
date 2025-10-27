@@ -28,6 +28,7 @@ import {
 import ApiError from "../../errors/ApiError";
 export const loginController = catchAsync(
   async (req: Request, res: Response) => {
+    
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) {
       //todo const formattedErrors = parsed.error.format();

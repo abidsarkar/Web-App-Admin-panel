@@ -23,10 +23,11 @@ import {
 import { hashPassword } from "../../utils/hashManager";
 
 export const loginService = async (email: string, password: string) => {
+    
   // 1️⃣ Find user by email
   const user = await EmployerInfo.findOne({ email }).select("+password");
   if (!user) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "User Not ");
+    throw new ApiError(httpStatus.UNAUTHORIZED, "invalid email or password");
   }
 
   // 2️⃣ Check if active
@@ -38,7 +39,7 @@ export const loginService = async (email: string, password: string) => {
   const isMatch = await argon2.verify(user.password, password);
   // 👆 Note: argon2.verify(storedHash, plainPassword)
   if (!isMatch) {
-    throw new ApiError(httpStatus.NOT_ACCEPTABLE, "Password is incorrect");
+    throw new ApiError(httpStatus.UNAUTHORIZED, "invalid email or password");
   }
 
   // 4️⃣ Generate JWT
@@ -59,7 +60,7 @@ export const loginService = async (email: string, password: string) => {
     name: user.name,
     email: user.email,
     role: user.role,
-    isActive:user.isActive
+    isActive: user.isActive,
   };
   user.lastLoginAt = new Date();
   user.otp = undefined;
@@ -75,19 +76,23 @@ export const forgotPasswordService = async (email: string) => {
   //? check if email is valid using zod
   //todo check if email is valid using zod
   // * check if email is valid using zod
-  
-  const parsed = emailSchema.safeParse({email});//passing as object
+
+  const parsed = emailSchema.safeParse({ email }); //passing as object
   //return error if email is not valid formate
   if (!parsed.success) {
-    throw new ApiError(httpStatus.BAD_REQUEST, "forgot password Validation error", {
-      path: "body",
-      value: z.treeifyError(parsed.error),
-    });
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      "forgot password Validation error",
+      {
+        path: "body",
+        value: z.treeifyError(parsed.error),
+      }
+    );
   }
   // 2 Find user by email
-  const user = await EmployerInfo.findOne({ email }).select("+password");
+  const user = await EmployerInfo.findOne({ email }).select("-password");
   if (!user) {
-    throw new ApiError(httpStatus.NOT_FOUND, "User Not found");
+    throw new ApiError(httpStatus.NOT_FOUND, "invalid email or password");
   }
 
   // 3 Check if active
@@ -143,9 +148,7 @@ export const verifyForgotPasswordOTPService = async (
     success: true,
     message: "OTP verified successfully",
     error: null,
-    user: {
-      
-    },
+    user: {},
   };
 };
 export const PasswordChangeService = async (
@@ -259,7 +262,7 @@ export const changePassword_FromProfileService = async (
     name: user.name,
     email: user.email,
     role: user.role,
-    isActive:user.isActive
+    isActive: user.isActive,
   };
   return {
     statusCode: httpStatus.ACCEPTED,
@@ -268,7 +271,7 @@ export const changePassword_FromProfileService = async (
     error: null,
     data: {
       accessToken,
-      user:userData,
+      user: userData,
     },
   };
 };
@@ -313,10 +316,10 @@ export const refreshTokenService = async (refreshToken: string) => {
     success: true,
     message: "Access token refreshed successfully",
     error: null,
-    new_refresh_Token:new_refresh_Token ,
+    new_refresh_Token: new_refresh_Token,
     data: {
       accessToken: accessToken,
-      
+
       user: userData,
     },
   };
