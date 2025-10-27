@@ -3,9 +3,18 @@ import { IProduct } from "./product.interface";
 
 const imageSchema = new Schema(
   {
-    filePathURL: { type: String },
-    fileOriginalName: { type: String },
+    filePathURL: {
+      type: String,
+      default:
+        "public/uploads/productCoverPicture/product-image-placeholder.jpg",
+    },
+    fileOriginalName: {
+      type: String,
+      default: "product-image-placeholder.jpg",
+    },
     fileServerName: { type: String },
+    mimetype: { type: String },
+    size: { type: Number },
     pathA: { type: String },
   },
   { _id: false }

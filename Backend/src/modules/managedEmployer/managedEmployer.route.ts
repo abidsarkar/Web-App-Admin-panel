@@ -21,7 +21,6 @@ import {
 } from "./managedEmployer.controller";
 import { adminRoleCheckMiddleware } from "../../middlewares/roleGuard";
 import {
-  optionalProfilePictureUpload,
   profilePictureUpload,
 } from "../../multer/multer.upload";
 

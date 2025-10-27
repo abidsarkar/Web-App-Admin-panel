@@ -2,7 +2,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import ApiError from "../errors/ApiError"; // Assuming you have an ApiError class to handle errors
-import { MAX_PROFILE_PIC_SIZE } from "../config/envConfig";
+import { MAX_FILE_SIZE, MAX_PRODUCT_COVER_PIC_SIZE, MAX_PROFILE_PIC_SIZE } from "../config/envConfig";
 
 // Common function for creating the upload folder
 const createUploadFolder = (folder: string) => {
@@ -55,6 +55,16 @@ const cvStorage = multer.diskStorage({
     cb(null, filename);
   },
 });
+// productCoverPicture Multer
+const productCoverPictureStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, createUploadFolder("productCoverPicture"));
+  },
+  filename: (req, file, cb) => {
+    const filename = `${Date.now()}-${file.originalname}`;
+    cb(null, filename);
+  },
+});
 
 // **Profile Picture File Filter and Size Limit**
 const profilePictureFilter = (req: any, file: any, cb: any) => {
@@ -81,26 +91,7 @@ const profilePictureUpload = multer({
   fileFilter: profilePictureFilter,
   limits: { fileSize: MAX_PROFILE_PIC_SIZE }, // 5MB size limit for profile picture
 }).single("profilePicture");
-//! optional profile picture upload
-const optionalProfilePictureFilter = (req: any, file: any, cb: any) => {
-  const allowedTypes = /jpeg|jpg|png|webp|avif/;
-  const extname = allowedTypes.test(
-    path.extname(file.originalname).toLowerCase()
-  );
-  const mimeType = allowedTypes.test(file.mimetype);
 
-  if (mimeType && extname) {
-    return cb(null, true); // Allow the file if it matches the filter
-  } else {
-     return cb(null, false);
-  }
-};
-
-export const optionalProfilePictureUpload = multer({
-  storage: profilePictureStorage,
-  fileFilter: optionalProfilePictureFilter,
-  limits: { fileSize: MAX_PROFILE_PIC_SIZE }, // 5MB size limit for profile picture
-}).single("profilePicture");
 // **logo image File Filter and Size Limit**
 const logoFilter = (req: any, file: any, cb: any) => {
   const allowedTypes = /jpeg|jpg|png|webp|avif/;
@@ -176,8 +167,33 @@ const cvFilter = (req: any, file: any, cb: any) => {
 const cvUpload = multer({
   storage: cvStorage,
   fileFilter: cvFilter,
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB size limit for CV
+  limits: { fileSize: MAX_FILE_SIZE }, // 10MB size limit for CV
 }).single("cv");
+//product cover picture
+const productCoverPictureFilter = (req: any, file: any, cb: any) => {
+  const allowedTypes = /jpeg|jpg|png|gif/; 
+  const extname = allowedTypes.test(
+    path.extname(file.originalname).toLowerCase()
+  );
+  const mimeType = allowedTypes.test(file.mimetype);
+
+  if (mimeType && extname) {
+    return cb(null, true); // Allow the file if it matches the filter
+  } else {
+    return cb(
+      new ApiError(
+        400,
+        "Invalid file type for product cover image. Allowed types: /jpeg|jpg|png|gif.And filed \"cv\" required"
+      )
+    );
+  }
+};
+
+const productCoverPictureUpload = multer({
+  storage: productCoverPictureStorage,
+  fileFilter: productCoverPictureFilter,
+  limits: { fileSize: MAX_PRODUCT_COVER_PIC_SIZE }, 
+}).single("productCoverImage");
 
 // Export all the separate multer instances
-export { profilePictureUpload, logoUpload, bannerUpload, cvUpload };
+export { profilePictureUpload, logoUpload, bannerUpload, cvUpload,productCoverPictureUpload };

@@ -10,18 +10,22 @@ export interface IProduct extends Document {
     filePathURL: string;
     fileOriginalName: string;
     fileServerName: string;
+    size: number;
+    mimetype: string;
     pathA?: string;
   };
-   // 🖼️ Multiple Images
+  // 🖼️ Multiple Images
   productImages?: {
     filePathURL: string;
     fileOriginalName: string;
     fileServerName: string;
+    size: number;
+    mimetype: string;
     pathA: string;
   }[];
-  productSize?:string;
-  productColor?:string;
-  productColorCode?:string;
+  productSize?: string;
+  productColor?: string;
+  productColorCode?: string;
   productPrice?: number;
   productStock?: number;
   productCategoryId?: string;
@@ -40,8 +44,8 @@ export interface IProduct extends Document {
     email: string;
     updatedAt: Date;
   };
-  isSaleable:boolean;
-  isDisplayable:boolean;
+  isSaleable: boolean;
+  isDisplayable: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
