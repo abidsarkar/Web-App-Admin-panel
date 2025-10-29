@@ -3,8 +3,9 @@ import {forgotPasswordRateLimiter, loginRateLimiter, otpResendRateLimiter} from 
 const router = express.Router();
 import { loginController,forgotPasswordController, verifyForgotPasswordOTPController, changePasswordController, resendOTPController, changePassword_fromProfileController, logoutController, refreshTokenController } from "./auth.controller";
 import { verifyAccessTokenMiddleware, verifyForgotPasswordTokenMiddleware, verifyRefreshTokenMiddleware } from "../../middlewares/verifyTokenMiddleware";
+import { loginTracker } from "../../logger/loginTracker";
 
-router.post("/login", loginRateLimiter,loginController);
+router.post("/login", loginRateLimiter,loginTracker,loginController);
 router.post("/forgot-password",forgotPasswordRateLimiter, forgotPasswordController);
 router.post("/verify-forgot-password-otp",verifyForgotPasswordTokenMiddleware, verifyForgotPasswordOTPController);
 router.post("/change-password", changePasswordController);
