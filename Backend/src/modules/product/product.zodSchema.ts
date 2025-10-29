@@ -108,6 +108,20 @@ export const getAllProductsSchema = z.object({
   sort: z.string().optional(), // e.g. "createdAt"
   order: z.enum(["asc", "desc"]).optional(), // default desc
 });
+//get product according to sub category
+export const getSubCategoryProductSchema = z.object({
+  page: z
+    .string()
+    .optional()
+    .transform((val) => (val ? parseInt(val, 10) : 1)), // default page = 1
+  limit: z
+    .string()
+    .optional()
+    .transform((val) => (val ? parseInt(val, 10) : 10)), // default limit = 10
+  subCategoryId: z.string().trim(), // optional search query (e.g., by name or email)
+  sort: z.string().optional(), // e.g. "createdAt"
+  order: z.enum(["asc", "desc"]).optional(), // default desc
+});
 export const productIdSchema = z.object({
   _id: z
     .string({

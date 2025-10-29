@@ -11,6 +11,7 @@ import {
   deleteProductSchema,
   getAllProductsAdminSchema,
   getAllProductsSchema,
+  getSubCategoryProductSchema,
   productIdSchema,
   replaceProductImageSchema,
   updateProductSchema,
@@ -23,6 +24,9 @@ import {
   deleteProductService,
   getAllProductsAdminService,
   getAllProductsService,
+  getSingleProductsAdminService,
+  getSingleProductsService,
+  getSubCategoryProductsService,
   replaceProductImageService,
   updateProductService,
   uploadProductCoverPictureService,
@@ -121,8 +125,72 @@ export const allProductController = catchAsync(
       message,
       error,
       data: {
-        pagination:data?.pagination,
+        pagination: data?.pagination,
         product: data?.products,
+      },
+    });
+  }
+);
+//get single product public
+export const getSingleProductController = catchAsync(
+  async (req: Request, res: Response) => {
+    const parsed = productIdSchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "single product Validation Error",
+        errors: z.treeifyError(parsed.error),
+      });
+    }
+    const admin_id = req.user?.id; //supper admin id form accessToken
+    const admin_role = req.user?.role; //supper admin role form accessToken
+    const admin_email = req.user?.email; //supper admin email form accessToken
+    const { statusCode, success, message, error, data } =
+      await getSingleProductsService(parsed.data);
+
+    sendResponse(res, {
+      statusCode,
+      success,
+      message,
+      error,
+      data: {
+        product: data?.product,
+      },
+    });
+  }
+);
+//get single product admin
+export const getSingleProductAdminController = catchAsync(
+  async (req: Request, res: Response) => {
+    const parsed = productIdSchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "single product admin Validation Error",
+        errors: z.treeifyError(parsed.error),
+      });
+    }
+    const admin_id = req.user?.id; //supper admin id form accessToken
+    const admin_role = req.user?.role; //supper admin role form accessToken
+    const admin_email = req.user?.email; //supper admin email form accessToken
+    const { statusCode, success, message, error, data } =
+      await getSingleProductsAdminService(
+        parsed.data,
+        admin_id!,
+        admin_role!,
+        admin_email!
+      );
+    sendAccessCookie(res, data?.accessToken);
+
+    sendResponse(res, {
+      statusCode,
+      success,
+      message,
+      error,
+      data: {
+        accessToken: data?.accessToken,
+        product: data?.product,
+        user: data?.user,
       },
     });
   }
@@ -142,11 +210,42 @@ export const allProductAdminController = catchAsync(
     const admin_role = req.user?.role; //supper admin role form accessToken
     const admin_email = req.user?.email; //supper admin email form accessToken
     const { statusCode, success, message, error, data } =
-      await getAllProductsAdminService(parsed.data,
+      await getAllProductsAdminService(
+        parsed.data,
         admin_id!,
         admin_role!,
         admin_email!
       );
+    
+    sendResponse(res, {
+      statusCode,
+      success,
+      message,
+      error,
+      data: {
+        pagination: data?.pagination,
+        product: data?.products,
+        user: data?.user,
+      },
+    });
+  }
+);
+//get product according to sub category
+export const getSubCategoryProductController = catchAsync(
+  async (req: Request, res: Response) => {
+    const parsed = getSubCategoryProductSchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "Get sub category product Validation Error",
+        errors: z.treeifyError(parsed.error),
+      });
+    }
+    const admin_id = req.user?.id; //supper admin id form accessToken
+    const admin_role = req.user?.role; //supper admin role form accessToken
+    const admin_email = req.user?.email; //supper admin email form accessToken
+    const { statusCode, success, message, error, data } =
+      await getSubCategoryProductsService(parsed.data);
 
     sendResponse(res, {
       statusCode,
@@ -154,14 +253,12 @@ export const allProductAdminController = catchAsync(
       message,
       error,
       data: {
-        pagination:data?.pagination,
+        pagination: data?.pagination,
         product: data?.products,
       },
     });
   }
 );
-//get product according to sub category
-
 //delete product with image
 export const deleteProductController = catchAsync(
   async (req: Request, res: Response) => {

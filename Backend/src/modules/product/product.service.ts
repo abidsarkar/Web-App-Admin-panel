@@ -12,6 +12,7 @@ import {
   fileSchema,
   getAllProductsAdminSchema,
   getAllProductsSchema,
+  getSubCategoryProductSchema,
   productIdSchema,
   replaceProductImageSchema,
   updateProductSchema,
@@ -128,7 +129,7 @@ export const getAllProductsService = async (
   }
   // 🧩 Hide unnecessary fields using .select()
   const hiddenFields =
-    "-productDescription -productDeliveryOption -productCoverImage.mimetype -productCoverImage.size -productImages -productPaymentOption -createdAt -updatedAt -__v -createdBy -updatedBy";
+    "-searchKeyword -extraComment -productDescription -productDeliveryOption -productCoverImage.mimetype -productCoverImage.size -productImages -productPaymentOption -createdAt -updatedAt -__v -createdBy -updatedBy";
 
   // 🧠 Fetch paginated data
   const [products, total] = await Promise.all([
@@ -167,6 +168,21 @@ export const getAllProductsAdminService = async (
   admin_role: string,
   admin_email: string
 ) => {
+  const allowedRoles = ["superAdmin", "subAdmin"];
+
+  if (!allowedRoles.includes(admin_role)) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Access denied.");
+  }
+
+  // 🧩 Verify admin exists
+  const existingUser = await EmployerInfo.findOne({ email: admin_email });
+  if (!existingUser) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Admin not found.");
+  }
+
+  if (existingUser.isActive === false) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Your account is deactivated.");
+  }
   const {
     page,
     limit,
@@ -249,12 +265,144 @@ export const getAllProductsAdminService = async (
         hasPrevPage: page > 1,
       },
       products,
+      user: {
+        id: admin_id,
+        role: admin_role,
+        email: admin_email,
+      },
     },
   };
 };
 //read product with sub category public
-//read single product
+export const getSubCategoryProductsService = async (
+  query: z.infer<typeof getSubCategoryProductSchema>
+) => {
+  const { page, limit, sort, order, subCategoryId } = query;
+
+  const skip = (page - 1) * limit;
+  const sortField = sort || "createdAt";
+  const sortOrder = order === "asc" ? 1 : -1;
+  // ✅ Filter only products with isDisplayable = true
+  const filter: any = {
+    isDisplayable: true,
+    productSubCategoryId: subCategoryId,
+  };
+  // 🔍 Add search by product name, category or subcategory
+
+  // 🧩 Hide unnecessary fields using .select()
+  const hiddenFields =
+    "-searchKeyword -extraComment -productDescription -productDeliveryOption -productCoverImage.mimetype -productCoverImage.size -productImages -productPaymentOption -createdAt -updatedAt -__v -createdBy -updatedBy";
+
+  // 🧠 Fetch paginated data
+  const [products, total] = await Promise.all([
+    ProductModel.find(filter)
+      .select(hiddenFields)
+      .sort({ [sortField]: sortOrder })
+      .skip(skip)
+      .limit(limit),
+    ProductModel.countDocuments(filter),
+  ]);
+
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: `${subCategoryId} Product List retrieved successfully`,
+    error: null,
+    data: {
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+      products,
+    },
+  };
+};
+//read single product public
+export const getSingleProductsService = async (
+  data: z.infer<typeof productIdSchema>
+) => {
+  const { _id } = data;
+
+  // Convert string to ObjectId
+  const objectId = new Types.ObjectId(_id);
+  const hiddenFields =
+    "-searchKeyword -extraComment  -createdAt -updatedAt -__v -createdBy -updatedBy";
+  const product = await ProductModel.findById(objectId).select(hiddenFields);
+  if (!product) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Product not found");
+  } else if (!product.isDisplayable) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Product not found");
+  }
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: `${product.productName} retrieved successfully`,
+    error: null,
+    data: {
+      product,
+    },
+  };
+};
 //read single product admin
+export const getSingleProductsAdminService = async (
+  data: z.infer<typeof productIdSchema>,
+  admin_id: string,
+  admin_role: string,
+  admin_email: string
+) => {
+  // 🔒 Role-based access
+  const allowedRoles = ["superAdmin", "subAdmin"];
+
+  if (!allowedRoles.includes(admin_role)) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Access denied.");
+  }
+
+  // 🧩 Verify admin exists
+  const existingUser = await EmployerInfo.findOne({ email: admin_email });
+  if (!existingUser) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Admin not found.");
+  }
+
+  if (existingUser.isActive === false) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Your account is deactivated.");
+  }
+  const { _id } = data;
+
+  // Convert string to ObjectId
+  const objectId = new Types.ObjectId(_id);
+  const hiddenFields = "-__v ";
+  const product = await ProductModel.findById(objectId).select(hiddenFields);
+  if (!product) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Product not found");
+  }
+  // 4️⃣ Generate JWT
+  const accessToken = generateAccessToken({
+    id: admin_id,
+    role: admin_role,
+    email: admin_email,
+  });
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: `${product.productName} retrieved successfully for admin`,
+    error: null,
+    data: {
+      accessToken,
+      product,
+      user: {
+        id: admin_id,
+        role: admin_role,
+        email: admin_email,
+      },
+    },
+  };
+};
 //update product
 export const updateProductService = async (
   data: z.infer<typeof updateProductSchema>,
