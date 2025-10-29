@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import dayjs from "dayjs";
-import { logger } from "./logger";
+import { securityLogger } from "./securityLogger"; // Import the separate logger
 
 // Enhanced login tracking
 export const loginMetrics = {
@@ -26,6 +26,7 @@ export const loginTracker = (
     const today = dayjs().format("YYYY-MM-DD");
     const clientIp = req.ip || 'unknown';
     const userAgent = req.get('User-Agent') || 'unknown';
+    const email = req.body?.email || 'unknown'; // Log attempted email
 
     // Track IP attempts
     loginMetrics.loginAttemptsByIP.set(
@@ -58,13 +59,29 @@ export const loginTracker = (
         loginMetrics.successfulLogins++;
         todayData.success++;
         
-        logger.info(`✅ Successful login - IP: ${clientIp}, User-Agent: ${userAgent.substring(0, 50)}`);
+        // Log to security file only
+        securityLogger.info('Successful login', {
+          ip: clientIp,
+          email: email,
+          userAgent: userAgent,
+          timestamp: new Date().toISOString(),
+          type: 'LOGIN_SUCCESS'
+        });
+        
       } else {
         loginMetrics.failedLogins++;
         todayData.failed++;
         loginMetrics.lastFailedAttempts.set(clientIp, new Date());
         
-        logger.warn(`❌ Failed login - IP: ${clientIp}, Status: ${res.statusCode}, User-Agent: ${userAgent.substring(0, 50)}`);
+        // Log to security file only
+        securityLogger.warn('Failed login attempt', {
+          ip: clientIp,
+          email: email,
+          userAgent: userAgent,
+          statusCode: res.statusCode,
+          timestamp: new Date().toISOString(),
+          type: 'LOGIN_FAILED'
+        });
       }
       
       return originalSend.call(this, body);
