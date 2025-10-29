@@ -22,7 +22,7 @@ import { EmployerInfo } from "../auth/auth.model";
 import { CategoryModel, SubCategoryModel } from "../category/category.model";
 import { Types } from "mongoose";
 import path from "path";
-
+import ExcelJs from "exceljs";
 export const createProductService = async (
   data: z.infer<typeof createProductSchema>,
   admin_id: string,
@@ -908,6 +908,151 @@ export const replaceProductImageService = async (
     data: {
       accessToken,
       product,
+    },
+  };
+};
+//!excel
+export const exportAllProductsToExcelService = async (
+  admin_id: string,
+  admin_role: string,
+  admin_email: string
+) => {
+  if (
+    admin_role !== "editor" &&
+    admin_role !== "superAdmin" &&
+    admin_role !== "subAdmin"
+  ) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Access denied");
+  }
+  // 🧩 Verify admin exists
+  const existingUser = await EmployerInfo.findOne({ email: admin_email });
+  if (!existingUser) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Admin not found.");
+  }
+
+  if (admin_role === "editor" && existingUser.isActive === false) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Your account is deactivated.");
+  }
+
+  const products = await ProductModel.find()
+    .select(" -productImages -createdBy -updatedBy")
+    .lean();
+  if (!products.length) {
+    throw new ApiError(httpStatus.NOT_FOUND, "No product found");
+  }
+  // Create workbook and worksheet
+  const workbook = new ExcelJs.Workbook();
+  const worksheet = workbook.addWorksheet("Products");
+  // Define columns
+  worksheet.columns = [
+    { header: "_id", key: "_id", width: 20 },
+    { header: "Product ID", key: "productId", width: 20 },
+    { header: "Product Name", key: "productName", width: 30 },
+    { header: "product Description", key: "productDescription", width: 30 },
+    { header: "size", key: "productSize", width: 20 },
+    { header: "color", key: "productColor", width: 20 },
+    { header: "color code", key: "productColorCode", width: 20 },
+    { header: "Price", key: "productPrice", width: 15 },
+    { header: "Stock", key: "productStock", width: 10 },
+    { header: "product Category Id", key: "productCategoryId", width: 10 },
+    {
+      header: "product Sub CategoryId",
+      key: "productSubCategoryId",
+      width: 10,
+    },
+    { header: "category Name", key: "categoryName", width: 12 },
+    { header: "subCategory Name", key: "subCategoryName", width: 12 },
+    {
+      header: "product Delivery Option",
+      key: "productDeliveryOption",
+      width: 30,
+    },
+    {
+      header: "product Payment Option",
+      key: "productPaymentOption",
+      width: 12,
+    },
+    { header: "Saleable", key: "isSaleable", width: 12 },
+    { header: "Displayable", key: "isDisplayable", width: 12 },
+    { header: "extra Comment", key: "extraComment", width: 12 },
+    { header: "cover image id", key: "productCoverImage_id", width: 20 },
+    {
+      header: "cover image filePath",
+      key: "productCoverImage_filePathURL",
+      width: 20,
+    },
+    {
+      header: "cover image size",
+      key: "productCoverImage_size",
+      width: 20,
+    },
+    { header: "Created Date", key: "createdAt", width: 20 },
+    { header: "Created By", key: "createdBy", width: 20 },
+    { header: "Updated By", key: "updatedBy", width: 20 },
+  ];
+  // Add data rows
+  products.forEach((product) => {
+    worksheet.addRow({
+      _id: product._id || "N/A",
+      productId: product.productId || "N/A",
+      productName: product.productName || "N/A",
+      productDescription: product.productDescription || "N/A",
+      productSize: product.productSize || "N/A",
+      productColor: product.productColor || "N/A",
+      productColorCode: product.productColorCode || "N/A",
+      productPrice: product.productPrice || 0,
+      productStock: product.productStock || 0,
+      productCategoryId: product.productCategoryId || "N/A",
+      productSubCategoryId: product.productSubCategoryId || "N/A",
+      categoryName: product.categoryName || "N/A",
+      subCategoryName: product.subCategoryName || "N/A",
+      productDeliveryOption: product.productDeliveryOption || "N/A",
+      productPaymentOption: product.productPaymentOption || "N/A",
+      isSaleable: product.isSaleable ? "Yes" : "No",
+      isDisplayable: product.isDisplayable ? "Yes" : "No",
+      extraComment: product.extraComment || "N/A",
+      createdAt: product.createdAt
+        ? new Date(product.createdAt).toLocaleDateString()
+        : "N/A",
+      productCoverImage_id: product.productCoverImage?._id|| "N/A",
+      productCoverImage_filePathURL: product.productCoverImage?.filePathURL|| "N/A",
+      productCoverImage_size: product.productCoverImage?.size|| "N/A",
+      createdBy: product.createdBy?.email|| "N/A",
+      updatedBy: product.updatedBy?.email|| "N/A",
+    });
+  });
+
+  // Style header row
+  worksheet.getRow(1).font = { bold: true };
+  worksheet.getRow(1).fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FFE6E6FA" },
+  };
+
+  // Generate buffer
+  const buffer = await workbook.xlsx.writeBuffer();
+  const accessToken = generateAccessToken({
+    id: admin_id,
+    role: admin_role,
+    email: admin_email,
+  });
+
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Products exported successfully",
+    error: null,
+    data: {
+      accessToken,
+      buffer: Buffer.from(buffer), // Ensure it's a proper Buffer
+      fileName: `products_export_${Date.now()}.xlsx`,
+      count: products.length,
+      user: {
+        id: admin_id,
+        role: admin_role,
+        email: admin_email,
+      },
     },
   };
 };

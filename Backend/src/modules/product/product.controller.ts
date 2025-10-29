@@ -22,6 +22,7 @@ import {
   createProductService,
   deleteProductImageService,
   deleteProductService,
+  exportAllProductsToExcelService,
   getAllProductsAdminService,
   getAllProductsService,
   getSingleProductsAdminService,
@@ -216,7 +217,7 @@ export const allProductAdminController = catchAsync(
         admin_role!,
         admin_email!
       );
-    
+
     sendResponse(res, {
       statusCode,
       success,
@@ -424,17 +425,90 @@ export const replaceProductImageController = catchAsync(
         message: "No replacement image provided",
       });
     }
-
+    const admin_id = req.user?.id;
+    const admin_role = req.user?.role;
+    const admin_email = req.user?.email;
     const { statusCode, success, message, error, data } =
       await replaceProductImageService(
         parsed.data,
         req.file,
+        admin_id!,
+        admin_role!,
+        admin_email!
+      );
+
+    sendAccessCookie(res, data?.accessToken);
+    sendResponse(res, { statusCode, success, message, error, data });
+  }
+);
+//export all product to excel
+// export const exportAllProductsController = catchAsync(
+//   async (req: Request, res: Response) => {
+//     const { statusCode, success, message, error, data } =
+//       await exportAllProductsToExcelService(
+//         req.user!.id,
+//         req.user!.role,
+//         req.user!.email
+//       );
+
+//     sendAccessCookie(res, data?.accessToken);
+//     // Set headers for file download
+//     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+//     res.setHeader('Content-Disposition', `attachment; filename=${result.data.fileName}`);
+//     res.setHeader('Content-Length', data.buffer.length);
+
+//     // Send the file
+//     res.send(result.data.buffer);
+//     sendResponse(res, {
+//       statusCode,
+//       success,
+//       message,
+//       error,
+//       data: {
+//         accessToken: data?.accessToken,
+//         user: data?.user,
+//       },
+//     });
+//   }
+// );
+//! download only
+//export all product to excel
+export const exportAllProductsController = catchAsync(
+  async (req: Request, res: Response) => {
+    const { statusCode, success, message, error, data } =
+      await exportAllProductsToExcelService(
         req.user!.id,
         req.user!.role,
         req.user!.email
       );
 
-    sendAccessCookie(res, data?.accessToken);
-    sendResponse(res, { statusCode, success, message, error, data });
+    // If there's an error, send normal JSON response
+    if (!success || error) {
+      sendAccessCookie(res, data?.accessToken);
+      return sendResponse(res, {
+        statusCode,
+        success,
+        message,
+        error,
+        data: {
+          accessToken: data?.accessToken,
+          user: data?.user,
+        },
+      });
+    }
+
+    // Ensure buffer is properly typed
+    const fileBuffer = Buffer.isBuffer(data.buffer) ? data.buffer : Buffer.from(data.buffer);
+
+    // Set headers for file download
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=${data.fileName}`);
+    res.setHeader('Content-Length', fileBuffer.length);
+
+    // Send access token in cookie
+    sendAccessCookie(res, data.accessToken);
+
+    // Send the file buffer - this ends the response
+    res.send(fileBuffer);
   }
 );
