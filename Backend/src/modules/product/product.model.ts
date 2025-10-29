@@ -37,7 +37,17 @@ const productSchema = new Schema<IProduct>(
       //ref: "Category",
       // required: false,
     },
+    categoryName: {
+      type: String,
+      //ref: "SubCategory",
+      //required: false,
+    },
     productSubCategoryId: {
+      type: String,
+      //ref: "SubCategory",
+      //required: false,
+    },
+    subCategoryName: {
       type: String,
       //ref: "SubCategory",
       //required: false,

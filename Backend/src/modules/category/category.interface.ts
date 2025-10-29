@@ -6,6 +6,7 @@ export interface ISubCategory extends Document {
   subCategoryName: string;
   subCategoryId: string;
   categoryId: string; // reference to parent category
+  categoryName: string; // reference to parent category
   createdBy?: {
     id: string;
     role: string;

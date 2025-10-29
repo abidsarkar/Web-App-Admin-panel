@@ -7,6 +7,7 @@ const subCategorySchema = new Schema<ISubCategory>(
     subCategoryName: { type: String, required: true, trim: true },
     subCategoryId: { type: String, required: true, unique: true },
     categoryId: { type: String, required: true },
+    categoryName:{type:String},
     createdBy: {
       id: String,
       role: String,

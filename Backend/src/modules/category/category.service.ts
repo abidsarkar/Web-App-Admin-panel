@@ -383,7 +383,7 @@ export const createSubCategoryService = async (
   if (!existingCategory) {
     throw new ApiError(httpStatus.NOT_FOUND, "Category ID does not exist");
   }
-
+  const categoryName = existingCategory.categoryName;
   // 🔁 3️⃣ Check subCategoryId is unique
   const existingSub = await SubCategoryModel.findOne({ subCategoryId });
   if (existingSub) {
@@ -395,6 +395,7 @@ export const createSubCategoryService = async (
     subCategoryName,
     subCategoryId,
     categoryId,
+    categoryName,
     createdBy: {
       id: admin_id,
       role: admin_role,
@@ -448,7 +449,7 @@ export const updateSubCategoryService = async (
   admin_role: string,
   admin_email: string
 ) => {
-  // 🔒 Role-based access control
+  // 🔒 Role-based access
   if (admin_role !== "editor" && admin_role !== "superAdmin") {
     throw new ApiError(httpStatus.UNAUTHORIZED, "Access denied.");
   }
@@ -463,8 +464,7 @@ export const updateSubCategoryService = async (
   }
 
   // 🧾 Extract data
-  const { subCategoryId, newSubCategoryId, subCategoryName, newCategoryId } =
-    data;
+  const { subCategoryId, newSubCategoryId, subCategoryName, newCategoryId } = data;
 
   // 🔍 Find existing subcategory
   const subCategory = await SubCategoryModel.findOne({ subCategoryId });
@@ -472,28 +472,19 @@ export const updateSubCategoryService = async (
     throw new ApiError(httpStatus.NOT_FOUND, "Sub-category not found.");
   }
 
-  // ✅ 1️⃣ Check if newSubCategoryId already exists (if provided)
+  // ✅ 1️⃣ If subCategoryId is changing, check uniqueness
   if (newSubCategoryId) {
-    const duplicate = await SubCategoryModel.findOne({
-      subCategoryId: newSubCategoryId,
-    });
+    const duplicate = await SubCategoryModel.findOne({ subCategoryId: newSubCategoryId });
     if (duplicate) {
-      throw new ApiError(
-        httpStatus.CONFLICT,
-        "New subCategoryId already exists."
-      );
+      throw new ApiError(httpStatus.CONFLICT, "New subCategoryId already exists.");
     }
-    subCategory.subCategoryId = newSubCategoryId; // assign new id
+    subCategory.subCategoryId = newSubCategoryId;
   }
 
-  // ✅ 2️⃣ Handle category change (if provided)
+  // ✅ 2️⃣ Handle category change (update categoryId + categoryName)
   if (newCategoryId && newCategoryId !== subCategory.categoryId) {
-    const oldCategory = await CategoryModel.findOne({
-      categoryId: subCategory.categoryId,
-    });
-    const newCategory = await CategoryModel.findOne({
-      categoryId: newCategoryId,
-    });
+    const oldCategory = await CategoryModel.findOne({ categoryId: subCategory.categoryId });
+    const newCategory = await CategoryModel.findOne({ categoryId: newCategoryId });
 
     if (!newCategory) {
       throw new ApiError(httpStatus.NOT_FOUND, "New categoryId not found.");
@@ -514,16 +505,17 @@ export const updateSubCategoryService = async (
       await newCategory.save();
     }
 
-    // update subcategory categoryId
+    // 🆕 Update categoryId & categoryName
     subCategory.categoryId = newCategoryId;
+    subCategory.categoryName = newCategory.categoryName;
   }
 
-  // ✅ 3️⃣ Update name if provided
+  // ✅ 3️⃣ Update subCategoryName if provided
   if (subCategoryName) {
     subCategory.subCategoryName = subCategoryName;
   }
 
-  // ✅ Update metadata
+  // ✅ 4️⃣ Update metadata
   subCategory.updatedBy = {
     id: admin_id,
     role: admin_role,
@@ -533,7 +525,7 @@ export const updateSubCategoryService = async (
 
   await subCategory.save();
 
-  // ✅ Generate new token
+  // ✅ 5️⃣ Generate new token
   const accessToken = generateAccessToken({
     id: admin_id,
     role: admin_role,

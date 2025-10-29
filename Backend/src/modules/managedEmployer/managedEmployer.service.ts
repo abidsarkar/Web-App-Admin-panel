@@ -1,5 +1,5 @@
 import fs from "fs";
-import z, { email } from "zod";
+import z from "zod";
 import argon2 from "argon2";
 import httpStatus from "http-status";
 import ApiError from "../../errors/ApiError";
@@ -233,6 +233,7 @@ export const getAllEmployeeInformationService = async (
     role: admin_role,
     email: admin_email,
   });
+  const totalPages = Math.ceil(total / limit);
 
   return {
     statusCode: httpStatus.OK,
@@ -245,7 +246,9 @@ export const getAllEmployeeInformationService = async (
         total,
         page,
         limit,
-        totalPages: Math.ceil(total / limit),
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
       },
       employees,
       user: {

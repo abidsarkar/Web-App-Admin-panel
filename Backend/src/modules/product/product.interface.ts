@@ -32,6 +32,8 @@ export interface IProduct extends Document {
   productStock?: number;
   productCategoryId?: string;
   productSubCategoryId?: string;
+  categoryName?: string;
+  subCategoryName?: string;
   productDeliveryOption?: string;
   productPaymentOption?: string;
   createdBy?: {

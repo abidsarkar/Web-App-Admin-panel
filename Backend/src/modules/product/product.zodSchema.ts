@@ -60,6 +60,39 @@ export const updateProductSchema = z.object({
     }, z.boolean())
     .optional(),
 });
+//get all product for admin
+export const getAllProductsAdminSchema = z.object({
+ page: z
+    .string()
+    .optional()
+    .transform((val) => (val ? parseInt(val, 10) : 1)), // default page = 1
+  limit: z
+    .string()
+    .optional()
+    .transform((val) => (val ? parseInt(val, 10) : 10)), // default limit = 10
+  search: z.string().optional(), // optional search query (e.g., by name or email)
+  isActive: z.preprocess((val) => {
+    if (val === "true") return true;
+    if (val === "false") return false;
+    return val;
+  }, z.boolean().optional()), // optional filter
+  sort: z.string().optional(), // e.g. "createdAt"
+  order: z.enum(["asc", "desc"]).optional(), // default desc
+});
+//get all product for public
+export const getAllProductsSchema = z.object({
+ page: z
+    .string()
+    .optional()
+    .transform((val) => (val ? parseInt(val, 10) : 1)), // default page = 1
+  limit: z
+    .string()
+    .optional()
+    .transform((val) => (val ? parseInt(val, 10) : 10)), // default limit = 10
+  search: z.string().optional(), // optional search query (e.g., by name or email)
+  sort: z.string().optional(), // e.g. "createdAt"
+  order: z.enum(["asc", "desc"]).optional(), // default desc
+});
 export const productIdSchema = z.object({
   _id: z
     .string({
@@ -69,6 +102,7 @@ export const productIdSchema = z.object({
       message: "Invalid ObjectId format",
     }),
 });
+//upload cover photo
 const ACCEPTED_IMAGE_TYPES = [
   "image/jpeg",
   "image/png",

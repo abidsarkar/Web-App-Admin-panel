@@ -9,6 +9,7 @@ import {
   createProductSchema,
   deleteProductImageSchema,
   deleteProductSchema,
+  getAllProductsSchema,
   productIdSchema,
   replaceProductImageSchema,
   updateProductSchema,
@@ -19,6 +20,7 @@ import {
   createProductService,
   deleteProductImageService,
   deleteProductService,
+  getAllProductsService,
   replaceProductImageService,
   updateProductService,
   uploadProductCoverPictureService,
@@ -90,6 +92,35 @@ export const updateProductController = catchAsync(
         accessToken: data?.accessToken,
         product: data?.product,
         user: data?.user,
+      },
+    });
+  }
+);
+//get all product
+export const allProductController = catchAsync(
+  async (req: Request, res: Response) => {
+    const parsed = getAllProductsSchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "update product Validation Error",
+        errors: z.treeifyError(parsed.error),
+      });
+    }
+    const admin_id = req.user?.id; //supper admin id form accessToken
+    const admin_role = req.user?.role; //supper admin role form accessToken
+    const admin_email = req.user?.email; //supper admin email form accessToken
+    const { statusCode, success, message, error, data } =
+      await getAllProductsService(parsed.data);
+
+    sendResponse(res, {
+      statusCode,
+      success,
+      message,
+      error,
+      data: {
+        pagination:data?.pagination,
+        product: data?.products,
       },
     });
   }

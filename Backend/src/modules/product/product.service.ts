@@ -10,6 +10,7 @@ import {
   deleteProductImageSchema,
   deleteProductSchema,
   fileSchema,
+  getAllProductsSchema,
   productIdSchema,
   replaceProductImageSchema,
   updateProductSchema,
@@ -52,6 +53,9 @@ export const createProductService = async (
     throw new ApiError(httpStatus.NOT_FOUND, "Invalid subcategory ID");
   }
   const PutProductCategoryId = subCategory.categoryId;
+  const PutProductCategoryName = subCategory.categoryName;
+  const PutProductSubCategoryName = subCategory.subCategoryName;
+
   // 4️⃣ Generate JWT
   const accessToken = generateAccessToken({
     id: admin_id,
@@ -63,7 +67,9 @@ export const createProductService = async (
   const product = await ProductModel.create({
     ...data,
     productCategoryId: PutProductCategoryId,
+    categoryName: PutProductCategoryName,
     productSubCategoryId: subCategory.subCategoryId,
+    subCategoryName: PutProductSubCategoryName,
     productCoverImage: {
       filePathURL:
         "public/uploads/productCoverPicture/product-image-placeholder.jpg",
@@ -95,7 +101,108 @@ export const createProductService = async (
     },
   };
 };
-//read product public
+//read all product public
+export const getAllProductsService = async (
+  query: z.infer<typeof getAllProductsSchema>
+) => {
+  const { page, limit, sort, order, search } = query;
+
+  const skip = (page - 1) * limit;
+  const sortField = sort || "createdAt";
+  const sortOrder = order === "asc" ? 1 : -1;
+  // ✅ Filter only products with isDisplayable = true
+  const filter: any = { isDisplayable: true };
+  // 🔍 Add search by product name, category or subcategory
+  if (search && search.trim() !== "") {
+    const regex = new RegExp(search, "i"); // case-insensitive search
+    filter.$or = [
+      { productName: regex },
+      { productCategoryId: regex },
+      { productSubCategoryId: regex },
+      { categoryName: regex }, // Search by category name
+      { subCategoryName: regex }, // Search by subcategory name
+    ];
+  }
+  // 🧩 Hide unnecessary fields using .select()
+  const hiddenFields =
+    "-productDescription -productDeliveryOption -productCoverImage.mimetype -productCoverImage.size -productImages -productPaymentOption -createdAt -updatedAt -__v -createdBy -updatedBy";
+
+  // 🧠 Fetch paginated data
+  const [products, total] = await Promise.all([
+    ProductModel.find(filter)
+      .select(hiddenFields)
+      .sort({ [sortField]: sortOrder })
+      .skip(skip)
+      .limit(limit),
+    ProductModel.countDocuments(filter),
+  ]);
+
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "All Product List retrieved successfully",
+    error: null,
+    data: {
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+      products,
+    },
+  };
+};
+//!read all product admin
+export const getAllProductsAdminService = async (
+  query: z.infer<typeof getAllProductsSchema>
+) => {
+  const { page, limit, sort, order } = query;
+
+  const skip = (page - 1) * limit;
+  const sortField = sort || "createdAt";
+  const sortOrder = order === "asc" ? 1 : -1;
+  // ✅ Filter only products with isDisplayable = true
+  const filter = { isDisplayable: true };
+
+  // 🧩 Hide unnecessary fields using .select()
+  const hiddenFields =
+    "-productDescription -productDeliveryOption -productCoverImage.mimetype -productCoverImage.size -productImages -productPaymentOption -createdAt -updatedAt -__v -createdBy -updatedBy";
+
+  // 🧠 Fetch paginated data
+  const [products, total] = await Promise.all([
+    ProductModel.find(filter)
+      .select(hiddenFields)
+      .sort({ [sortField]: sortOrder })
+      .skip(skip)
+      .limit(limit),
+    ProductModel.countDocuments(filter),
+  ]);
+
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "All Product List retrieved successfully",
+    error: null,
+    data: {
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+      products,
+    },
+  };
+};
 //read product admin
 //update product
 export const updateProductService = async (
@@ -135,6 +242,8 @@ export const updateProductService = async (
     throw new ApiError(httpStatus.NOT_FOUND, "Invalid subcategory ID");
   }
   const PutProductCategoryId = subCategory.categoryId;
+  const PutProductCategoryName = subCategory.categoryName;
+  const PutProductSubCategoryName = subCategory.subCategoryName;
 
   // ✅ Create the product
   const updatedProduct = await ProductModel.findByIdAndUpdate(
@@ -142,7 +251,9 @@ export const updateProductService = async (
     {
       $set: {
         ...data,
-        productCategoryId:PutProductCategoryId,
+        productCategoryId: PutProductCategoryId,
+        categoryName: PutProductCategoryName,
+        subCategoryName: PutProductSubCategoryName,
         updatedBy: {
           id: admin_id,
           role: admin_role,
