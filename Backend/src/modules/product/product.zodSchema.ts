@@ -31,6 +31,35 @@ export const createProductSchema = z.object({
     }, z.boolean())
     .optional(),
 });
+export const updateProductSchema = z.object({
+  _id: z.string().trim().min(2).max(100),
+  productId: z.string().trim().min(2).max(50).optional(),
+  productName: z.string().min(1, "Product name is required").optional(),
+  productDescription: z.string().optional(),
+  productSize: z.string().optional(),
+  productColor: z.string().optional(),
+  productColorCode: z.string().optional(),
+  // Price and stock
+  productPrice: z.number().nonnegative("Price cannot be negative").optional(),
+  productStock: z.number().nonnegative("Stock cannot be negative").int().optional(),
+  productSubCategoryId: z.string().trim().optional(),
+  productDeliveryOption: z.string().optional(),
+  productPaymentOption: z.string().optional(),
+  isSaleable: z
+    .preprocess((val) => {
+      if (val === "true") return true;
+      if (val === "false") return false;
+      return val;
+    }, z.boolean())
+    .optional(),
+  isDisplayable: z
+    .preprocess((val) => {
+      if (val === "true") return true;
+      if (val === "false") return false;
+      return val;
+    }, z.boolean())
+    .optional(),
+});
 export const productIdSchema = z.object({
   _id: z
     .string({
@@ -77,35 +106,25 @@ export const uploadManyProductPicSchema = z.array(fileSchema).nonempty({
 });
 //delete picture
 export const deleteProductImageSchema = z.object({
-  productId: z
-    .string()
-    .refine((val) => Types.ObjectId.isValid(val), {
-      message: "Invalid product ID",
-    }),
-  imageId: z
-    .string()
-    .refine((val) => Types.ObjectId.isValid(val), {
-      message: "Invalid image ID",
-    }),
+  productId: z.string().refine((val) => Types.ObjectId.isValid(val), {
+    message: "Invalid product ID",
+  }),
+  imageId: z.string().refine((val) => Types.ObjectId.isValid(val), {
+    message: "Invalid image ID",
+  }),
 });
 //replace
 export const replaceProductImageSchema = z.object({
-  productId: z
-    .string()
-    .refine((val) => Types.ObjectId.isValid(val), {
-      message: "Invalid product ID",
-    }),
-  imageId: z
-    .string()
-    .refine((val) => Types.ObjectId.isValid(val), {
-      message: "Invalid image ID",
-    }),
+  productId: z.string().refine((val) => Types.ObjectId.isValid(val), {
+    message: "Invalid product ID",
+  }),
+  imageId: z.string().refine((val) => Types.ObjectId.isValid(val), {
+    message: "Invalid image ID",
+  }),
 });
-//delete the entire product 
+//delete the entire product
 export const deleteProductSchema = z.object({
-  _id: z
-    .string()
-    .refine((val) => Types.ObjectId.isValid(val), {
-      message: "Invalid product ID",
-    }),
+  _id: z.string().refine((val) => Types.ObjectId.isValid(val), {
+    message: "Invalid product ID",
+  }),
 });

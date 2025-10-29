@@ -12,6 +12,7 @@ import {
   fileSchema,
   productIdSchema,
   replaceProductImageSchema,
+  updateProductSchema,
   uploadManyProductPicSchema,
 } from "./product.zodSchema";
 import { EmployerInfo } from "../auth/auth.model";
@@ -26,7 +27,9 @@ export const createProductService = async (
   admin_email: string
 ) => {
   // 🔒 Role-based access
-  if (admin_role !== "editor" && admin_role !== "superAdmin") {
+  const allowedRoles = ["superAdmin", "subAdmin"];
+
+  if (!allowedRoles.includes(admin_role)) {
     throw new ApiError(httpStatus.UNAUTHORIZED, "Access denied.");
   }
 
@@ -36,7 +39,7 @@ export const createProductService = async (
     throw new ApiError(httpStatus.NOT_FOUND, "Admin not found.");
   }
 
-  if (admin_role === "editor" && existingUser.isActive === false) {
+  if (existingUser.isActive === false) {
     throw new ApiError(httpStatus.UNAUTHORIZED, "Your account is deactivated.");
   }
 
@@ -84,6 +87,87 @@ export const createProductService = async (
     data: {
       accessToken,
       product,
+      user: {
+        id: admin_id,
+        role: admin_role,
+        email: admin_email,
+      },
+    },
+  };
+};
+//read product public
+//read product admin
+//update product
+export const updateProductService = async (
+  data: z.infer<typeof updateProductSchema>,
+  admin_id: string,
+  admin_role: string,
+  admin_email: string
+) => {
+  // 🔒 Role-based access
+  const allowedRoles = ["superAdmin", "subAdmin"];
+
+  if (!allowedRoles.includes(admin_role)) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Access denied.");
+  }
+
+  // 🧩 Verify admin exists
+  const existingUser = await EmployerInfo.findOne({ email: admin_email });
+  if (!existingUser) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Admin not found.");
+  }
+
+  if (existingUser.isActive === false) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Your account is deactivated.");
+  }
+
+  const { _id, productSubCategoryId } = data;
+  // Convert string to ObjectId
+  const objectId = new Types.ObjectId(_id);
+  // ✅ Validate SubCategory
+  let subCategory;
+  if (productSubCategoryId) {
+    subCategory = await SubCategoryModel.findOne({
+      subCategoryId: productSubCategoryId,
+    });
+  }
+  if (!subCategory) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Invalid subcategory ID");
+  }
+  const PutProductCategoryId = subCategory.categoryId;
+
+  // ✅ Create the product
+  const updatedProduct = await ProductModel.findByIdAndUpdate(
+    objectId,
+    {
+      $set: {
+        ...data,
+        productCategoryId:PutProductCategoryId,
+        updatedBy: {
+          id: admin_id,
+          role: admin_role,
+          email: admin_email,
+          updatedAt: new Date(),
+        },
+      },
+    },
+    { new: true, runValidators: true }
+  );
+  const { __v, ...safeProduct } = updatedProduct!.toObject();
+  // 4️⃣ Generate JWT
+  const accessToken = generateAccessToken({
+    id: admin_id,
+    role: admin_role,
+    email: admin_email,
+  });
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Product update successfully",
+    error: null,
+    data: {
+      accessToken,
+      product: safeProduct,
       user: {
         id: admin_id,
         role: admin_role,
