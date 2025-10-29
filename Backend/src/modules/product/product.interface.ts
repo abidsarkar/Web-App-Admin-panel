@@ -50,6 +50,8 @@ export interface IProduct extends Document {
   };
   isSaleable: boolean;
   isDisplayable: boolean;
+  searchKeyword:string;
+  extraComment:string;
   createdAt: Date;
   updatedAt: Date;
 }

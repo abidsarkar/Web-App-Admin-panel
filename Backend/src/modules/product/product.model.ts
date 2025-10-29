@@ -68,6 +68,8 @@ const productSchema = new Schema<IProduct>(
     },
     isSaleable: { type: Boolean, default: true },
     isDisplayable: { type: Boolean, default: true },
+    searchKeyword: { type: String, default: null },
+    extraComment: { type: String, default: null },
   },
   { timestamps: true, versionKey: false }
 );

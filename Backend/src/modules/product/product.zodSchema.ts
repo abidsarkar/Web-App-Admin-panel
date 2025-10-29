@@ -30,6 +30,8 @@ export const createProductSchema = z.object({
       return val;
     }, z.boolean())
     .optional(),
+  searchKeyword: z.string().optional(),
+  extraComment: z.string().optional(),
 });
 export const updateProductSchema = z.object({
   _id: z.string().trim().min(2).max(100),
@@ -41,7 +43,11 @@ export const updateProductSchema = z.object({
   productColorCode: z.string().optional(),
   // Price and stock
   productPrice: z.number().nonnegative("Price cannot be negative").optional(),
-  productStock: z.number().nonnegative("Stock cannot be negative").int().optional(),
+  productStock: z
+    .number()
+    .nonnegative("Stock cannot be negative")
+    .int()
+    .optional(),
   productSubCategoryId: z.string().trim().optional(),
   productDeliveryOption: z.string().optional(),
   productPaymentOption: z.string().optional(),
@@ -59,10 +65,12 @@ export const updateProductSchema = z.object({
       return val;
     }, z.boolean())
     .optional(),
+  searchKeyword: z.string().optional(),
+  extraComment: z.string().optional(),
 });
 //get all product for admin
 export const getAllProductsAdminSchema = z.object({
- page: z
+  page: z
     .string()
     .optional()
     .transform((val) => (val ? parseInt(val, 10) : 1)), // default page = 1
@@ -71,17 +79,24 @@ export const getAllProductsAdminSchema = z.object({
     .optional()
     .transform((val) => (val ? parseInt(val, 10) : 10)), // default limit = 10
   search: z.string().optional(), // optional search query (e.g., by name or email)
-  isActive: z.preprocess((val) => {
+  isSaleable: z.preprocess((val) => {
     if (val === "true") return true;
     if (val === "false") return false;
     return val;
   }, z.boolean().optional()), // optional filter
+  isDisplayable: z.preprocess((val) => {
+    if (val === "true") return true;
+    if (val === "false") return false;
+    return val;
+  }, z.boolean().optional()), // optional filter
+  subCategoryId: z.string().optional(), // e.g. "createdAt"
+  categoryId: z.string().optional(), // e.g. "createdAt"
   sort: z.string().optional(), // e.g. "createdAt"
   order: z.enum(["asc", "desc"]).optional(), // default desc
 });
 //get all product for public
 export const getAllProductsSchema = z.object({
- page: z
+  page: z
     .string()
     .optional()
     .transform((val) => (val ? parseInt(val, 10) : 1)), // default page = 1

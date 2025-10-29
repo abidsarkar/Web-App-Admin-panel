@@ -10,6 +10,7 @@ import {
   deleteProductImageSchema,
   deleteProductSchema,
   fileSchema,
+  getAllProductsAdminSchema,
   getAllProductsSchema,
   productIdSchema,
   replaceProductImageSchema,
@@ -114,11 +115,13 @@ export const getAllProductsService = async (
   const filter: any = { isDisplayable: true };
   // 🔍 Add search by product name, category or subcategory
   if (search && search.trim() !== "") {
-    const regex = new RegExp(search, "i"); // case-insensitive search
+    const cleanSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(cleanSearch, "i");
     filter.$or = [
       { productName: regex },
-      { productCategoryId: regex },
-      { productSubCategoryId: regex },
+      { searchKeyword: regex },
+      //{ productCategoryId: regex },
+      // { productSubCategoryId: regex },
       { categoryName: regex }, // Search by category name
       { subCategoryName: regex }, // Search by subcategory name
     ];
@@ -157,26 +160,67 @@ export const getAllProductsService = async (
     },
   };
 };
-//!read all product admin
+//read all product admin with filter
 export const getAllProductsAdminService = async (
-  query: z.infer<typeof getAllProductsSchema>
+  query: z.infer<typeof getAllProductsAdminSchema>,
+  admin_id: string,
+  admin_role: string,
+  admin_email: string
 ) => {
-  const { page, limit, sort, order } = query;
+  const {
+    page,
+    limit,
+    sort,
+    order,
+    search,
+    isSaleable,
+    isDisplayable,
+    categoryId,
+    subCategoryId,
+  } = query;
 
   const skip = (page - 1) * limit;
   const sortField = sort || "createdAt";
   const sortOrder = order === "asc" ? 1 : -1;
-  // ✅ Filter only products with isDisplayable = true
-  const filter = { isDisplayable: true };
 
-  // 🧩 Hide unnecessary fields using .select()
-  const hiddenFields =
-    "-productDescription -productDeliveryOption -productCoverImage.mimetype -productCoverImage.size -productImages -productPaymentOption -createdAt -updatedAt -__v -createdBy -updatedBy";
+  // ✅ Build filter dynamically - only include provided values
+  const filter: any = {};
+  // Only add filters if they are provided and valid
+  if (isSaleable !== undefined) {
+    filter.isSaleable = isSaleable;
+  }
+
+  if (isDisplayable !== undefined) {
+    filter.isDisplayable = isDisplayable;
+  }
+
+  if (categoryId && categoryId.trim() !== "") {
+    filter.productCategoryId = categoryId;
+  }
+
+  if (subCategoryId && subCategoryId.trim() !== "") {
+    filter.productSubCategoryId = subCategoryId;
+  }
+
+  // 🔍 Add search by product name, category or subcategory
+  if (search && search.trim() !== "") {
+    const cleanSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(cleanSearch, "i");
+
+    filter.$or = [
+      { productName: regex },
+      { searchKeyword: regex },
+      { categoryName: regex },
+      { subCategoryName: regex },
+      { "createdBy.email": regex },
+      { "updatedBy.email": regex },
+    ];
+  }
 
   // 🧠 Fetch paginated data
   const [products, total] = await Promise.all([
     ProductModel.find(filter)
-      .select(hiddenFields)
+
       .sort({ [sortField]: sortOrder })
       .skip(skip)
       .limit(limit),
@@ -184,11 +228,16 @@ export const getAllProductsAdminService = async (
   ]);
 
   const totalPages = Math.ceil(total / limit);
-
+  // 4️⃣ Generate JWT
+  const accessToken = generateAccessToken({
+    id: admin_id,
+    role: admin_role,
+    email: admin_email,
+  });
   return {
     statusCode: httpStatus.OK,
     success: true,
-    message: "All Product List retrieved successfully",
+    message: "All Product List retrieved successfully for admin",
     error: null,
     data: {
       pagination: {
@@ -203,7 +252,9 @@ export const getAllProductsAdminService = async (
     },
   };
 };
-//read product admin
+//read product with sub category public
+//read single product
+//read single product admin
 //update product
 export const updateProductService = async (
   data: z.infer<typeof updateProductSchema>,

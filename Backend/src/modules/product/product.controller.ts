@@ -9,6 +9,7 @@ import {
   createProductSchema,
   deleteProductImageSchema,
   deleteProductSchema,
+  getAllProductsAdminSchema,
   getAllProductsSchema,
   productIdSchema,
   replaceProductImageSchema,
@@ -20,6 +21,7 @@ import {
   createProductService,
   deleteProductImageService,
   deleteProductService,
+  getAllProductsAdminService,
   getAllProductsService,
   replaceProductImageService,
   updateProductService,
@@ -103,7 +105,7 @@ export const allProductController = catchAsync(
     if (!parsed.success) {
       return res.status(httpStatus.BAD_REQUEST).json({
         success: false,
-        message: "update product Validation Error",
+        message: "All product Validation Error",
         errors: z.treeifyError(parsed.error),
       });
     }
@@ -125,6 +127,41 @@ export const allProductController = catchAsync(
     });
   }
 );
+//get all product info for admin
+export const allProductAdminController = catchAsync(
+  async (req: Request, res: Response) => {
+    const parsed = getAllProductsAdminSchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "all product Admin Validation Error",
+        errors: z.treeifyError(parsed.error),
+      });
+    }
+    const admin_id = req.user?.id; //supper admin id form accessToken
+    const admin_role = req.user?.role; //supper admin role form accessToken
+    const admin_email = req.user?.email; //supper admin email form accessToken
+    const { statusCode, success, message, error, data } =
+      await getAllProductsAdminService(parsed.data,
+        admin_id!,
+        admin_role!,
+        admin_email!
+      );
+
+    sendResponse(res, {
+      statusCode,
+      success,
+      message,
+      error,
+      data: {
+        pagination:data?.pagination,
+        product: data?.products,
+      },
+    });
+  }
+);
+//get product according to sub category
+
 //delete product with image
 export const deleteProductController = catchAsync(
   async (req: Request, res: Response) => {
