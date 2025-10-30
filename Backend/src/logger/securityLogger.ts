@@ -4,7 +4,7 @@ import path from "path";
 
 // Separate logger for security/login events
 export const securityLogger = createLogger({
-  level: 'info',
+  level: "info",
   format: format.combine(
     format.timestamp({ format: "DD-MM-YYYY HH:mm:ss" }),
     format.errors({ stack: true }),
@@ -15,13 +15,13 @@ export const securityLogger = createLogger({
     new DailyRotateFile({
       filename: path.join("logs", "security-%DATE%.log"),
       datePattern: "YYYY-MM-DD",
-      level: 'info',
+      level: "info",
     }),
     // Error logs for security (separate from main errors)
     new DailyRotateFile({
       filename: path.join("logs", "security-error-%DATE%.log"),
       datePattern: "YYYY-MM-DD",
-      level: 'error',
+      level: "error",
     }),
   ],
 });
@@ -30,10 +30,7 @@ export const securityLogger = createLogger({
 if (process.env.NODE_ENV !== "production") {
   securityLogger.add(
     new transports.Console({
-      format: format.combine(
-        format.colorize(),
-        format.simple()
-      ),
+      format: format.combine(format.colorize(), format.simple()),
     })
   );
 }
