@@ -1,0 +1,13 @@
+DATABASE_URL="mongodb://localhost:27017/web-app-admin-panel" #local
+
+JWT_SECRET_KEY="abcd"
+REFRESH_SECRET_KEY="abcd"
+PORT=5001
+NODEMAILER_GMAIL =abcd@gmail.com
+NODEMAILER_GMAIL_PASSWORD =abcd 
+UPLOAD_FOLDER = "public/images"
+MAX_PROFILE_PIC_SIZE=5242880#5mb
+MAX_PRODUCT_COVER_PIC_SIZE=5242880#5mb
+MAX_FILE_SIZE=10485760 #10mb
+NODE_ENV="development" #development production
+OTP_EXPIRE_TIME = 5*60*1000;
