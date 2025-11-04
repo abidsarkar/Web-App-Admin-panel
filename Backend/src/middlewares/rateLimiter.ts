@@ -53,3 +53,9 @@ export const globalRateLimiter = rateLimit({
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
+export const registerNewCustomerLimiter = rateLimit({
+  windowMs: 1*60 * 60 * 1000, // 1 hour
+  max: 2, // Allow 2 requests per 1 hour
+  message: "Too many login attempts, please try again later.",
+  statusCode: httpStatus.TOO_MANY_REQUESTS, // Use 429 status code
+});

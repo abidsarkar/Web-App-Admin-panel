@@ -27,7 +27,7 @@ import {
   sendForgotPasswordCookie,
 } from "./customerAuth.utils";
 import ApiError from "../../errors/ApiError";
-export const loginController = catchAsync(
+export const loginCustomerController = catchAsync(
   async (req: Request, res: Response) => {
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -57,13 +57,13 @@ export const loginController = catchAsync(
   }
 );
 //register new customer
-export const registerController = catchAsync(
+export const registerCustomerController = catchAsync(
   async (req: Request, res: Response) => {
     const parsed = registerNewCustomerSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(httpStatus.BAD_REQUEST).json({
         success: false,
-        message: "register Validation Error",
+        message: "register customer Validation Error",
         errors: z.treeifyError(parsed.error),
       });
     }

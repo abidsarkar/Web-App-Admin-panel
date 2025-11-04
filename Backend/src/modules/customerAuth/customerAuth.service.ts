@@ -109,10 +109,10 @@ export const registerService = async (
     },
   });
   //send mail
-  await sendCreateAccountEmail({
-    email: newCustomer.email,
-    name: `${newCustomer.firstName} ${newCustomer.lastName}`,
-  });
+  // await sendCreateAccountEmail({
+  //   email: newCustomer.email,
+  //   name: `${newCustomer.firstName} ${newCustomer.lastName}`,
+  // });
   await newCustomer.save();
 
   return {
