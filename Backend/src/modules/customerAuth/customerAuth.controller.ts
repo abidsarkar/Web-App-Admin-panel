@@ -83,22 +83,34 @@ export const registerCustomerController = catchAsync(
   }
 );
 
-export const forgotPasswordController = catchAsync(
+export const forgotPasswordCustomerController = catchAsync(
   async (req: Request, res: Response) => {
-    const { email } = req.body;
-    const { forgotPasswordToken } = await forgotPasswordService(email);
-    sendForgotPasswordCookie(res, forgotPasswordToken);
+    const parsed = emailSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "forgot password customer Validation Error",
+        errors: z.treeifyError(parsed.error),
+      });
+    }
+
+    const { statusCode, success, message, error, data } =
+      await forgotPasswordService(parsed.data);
+    sendForgotPasswordCookie(res, data?.forgotPasswordToken);
+
     sendResponse(res, {
-      statusCode: httpStatus.OK,
-      success: true,
-      message: "Forgot password otp send to your email successful",
+      statusCode,
+      success,
+      message,
+      error,
       data: {
-        forgotPasswordToken: forgotPasswordToken,
+        forgotPasswordToken: data?.forgotPasswordToken,
+        user: data?.user,
       },
     });
   }
 );
-export const verifyForgotPasswordOTPController = catchAsync(
+export const verifyForgotPasswordOTPCustomerController = catchAsync(
   async (req: Request, res: Response) => {
     const parsed = otpSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -109,9 +121,8 @@ export const verifyForgotPasswordOTPController = catchAsync(
         data: {},
       });
     }
-    const { otp, email } = parsed.data;
     const { statusCode, success, message, error, user } =
-      await verifyForgotPasswordOTPService(otp, email);
+      await verifyForgotPasswordOTPService(parsed.data);
     sendResponse(res, {
       statusCode,
       success,

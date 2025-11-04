@@ -131,24 +131,12 @@ export const registerService = async (
 };
 
 // forgot password service
-export const forgotPasswordService = async (email: string) => {
+export const forgotPasswordService = async (data: z.infer<typeof emailSchema>) => {
   //! check if email is valid using zod
   //? check if email is valid using zod
   //todo check if email is valid using zod
   // * check if email is valid using zod
-
-  const parsed = emailSchema.safeParse({ email }); //passing as object
-  //return error if email is not valid formate
-  if (!parsed.success) {
-    throw new ApiError(
-      httpStatus.BAD_REQUEST,
-      "forgot password Validation error",
-      {
-        path: "body",
-        value: z.treeifyError(parsed.error),
-      }
-    );
-  }
+ const {email}= data;
   // 2 Find user by email
   const user = await customerInfoModel.findOne({ email }).select("-password");
   if (!user) {
@@ -174,12 +162,25 @@ export const forgotPasswordService = async (email: string) => {
   const forgotPasswordToken = generateForgotPasswordToken({
     email: user.email,
   });
-  return { forgotPasswordToken };
+   
+   return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Forgot password otp send to your email successful",
+    error: null,
+    data: {
+  
+      forgotPasswordToken,
+      user: {
+        email:user.email
+      },
+    },
+  };
 };
 export const verifyForgotPasswordOTPService = async (
-  otp: string,
-  email: string
+  data:z.infer<typeof otpSchema>
 ) => {
+  const{otp,email}=data;
   // 1 Find user by email
   const user = await customerInfoModel.findOne({ email }).select("+password");
   if (!user) {
@@ -282,14 +283,15 @@ export const resendOTPService = async (email: string) => {
   const forgotPasswordToken = generateForgotPasswordToken({
     email: user.email,
   });
-  return {
+   return {
     statusCode: httpStatus.OK,
     success: true,
-    message: "resend otp successfully",
+    message: "Login successfully",
     error: null,
     data: {
-      forgotPasswordToken: forgotPasswordToken,
-      user: null,
+    
+      forgotPasswordToken,
+      user: "ancd",
     },
   };
 };
