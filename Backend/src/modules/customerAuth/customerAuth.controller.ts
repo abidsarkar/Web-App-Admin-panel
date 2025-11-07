@@ -18,6 +18,7 @@ import {
   otpSchema,
   changePasswordSchema,
   registerNewCustomerSchema,
+  changePasswordFromProfileSchema,
 } from "./customerAuth.zodSchema";
 import z from "zod";
 import sendResponse from "../../utils/sendResponse";
@@ -185,7 +186,8 @@ export const resendOTPCustomerController = catchAsync(
 
 export const changePassword_fromProfileCustomerController = catchAsync(
   async (req: Request, res: Response) => {
-    const parsed = changePasswordSchema.safeParse(req.body);
+    
+    const parsed = changePasswordFromProfileSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(httpStatus.BAD_REQUEST).json({
         success: false,
@@ -194,9 +196,15 @@ export const changePassword_fromProfileCustomerController = catchAsync(
         data: {},
       });
     }
-    
+    const admin_id = req.user?.id; 
+    const admin_role = req.user?.role; 
+    const admin_email = req.user?.email; 
     const { statusCode, success, message, error, data } =
-      await changePassword_FromProfileService(parsed.data);
+      await changePassword_FromProfileService(parsed.data,
+        admin_id!,
+        admin_role!,
+        admin_email!
+      );
     sendAccessCookie(res, data?.accessToken);
     sendResponse(res, {
       statusCode,

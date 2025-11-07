@@ -40,23 +40,22 @@ export const loginController = catchAsync(
         //todo errors2: z.prettifyError(parsed.error),
       });
     }
-    const { email, password } = parsed.data;
-    const { accessToken, refreshToken, user } = await loginService(
-      email,
-      password
+    
+    const { statusCode, success, message, error, data } = await loginService(
+      parsed.data
     );
 
     //send refresh token in cookie
-    sendRefreshCookie(res, refreshToken);
-    sendAccessCookie(res, accessToken);
+    sendRefreshCookie(res, data?.refreshToken);
+    sendAccessCookie(res, data?.accessToken);
     sendResponse(res, {
-      statusCode: httpStatus.OK,
-      success: true,
-      message: "Login successful",
-      error:null,
+      statusCode,
+      success,
+      message,
+      error,
       data: {
-        accessToken,
-        user,
+        accessToken: data?.accessToken,
+        user: data?.user,
       },
     });
   }

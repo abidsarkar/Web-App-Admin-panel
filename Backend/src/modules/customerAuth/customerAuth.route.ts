@@ -12,6 +12,6 @@ router.post("/forgot-password", forgotPasswordRateLimiter,forgotPasswordCustomer
 router.post("/verify-forgot-password-otp",verifyForgotPasswordTokenMiddleware, verifyForgotPasswordOTPCustomerController);
 router.post("/change-password", changePasswordCustomerController);
 router.post("/resend-otp",otpResendRateLimiter, resendOTPCustomerController);
-router.post("/change-pass-from-profile",verifyAccessTokenMiddleware, changePassword_fromProfileCustomerController);
+router.post("/change-pass-from-profile",otpResendRateLimiter,verifyAccessTokenMiddleware, changePassword_fromProfileCustomerController);
 //router.post("/logout", verifyForgotPasswordOTPCustomerController);
 export const customerRoutes = router;

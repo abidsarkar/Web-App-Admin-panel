@@ -14,6 +14,7 @@ import ApiError from "../../errors/ApiError";
 import httpStatus from "http-status";
 import { JWT_SECRET_KEY } from "../../config/envConfig";
 import {
+  changePasswordFromProfileSchema,
   changePasswordSchema,
   emailSchema,
   loginSchema,
@@ -296,21 +297,31 @@ export const resendOTPService = async (data: z.infer<typeof emailSchema>) => {
 };
 //change password from profile as known the old password
 export const changePassword_FromProfileService = async (
-  data: z.infer<typeof changePasswordSchema>,
-  
+  data: z.infer<typeof changePasswordFromProfileSchema>,
+  admin_id:string,
+  admin_role:string,
+  admin_email:string
 ) => {
-  const {email,password}= data;
-  // 1 Find user by email
-  const user = await customerInfoModel.findOne({ email });
+  const { _id, newPassword,currentPassword } = data;
+  //check if the user is same as logged in user
+  if(_id !==admin_id){
+    throw new ApiError(httpStatus.UNAUTHORIZED,"You are not authorized to change this password");
+  }
+  const user = await customerInfoModel.findById(_id).select("+password");
   if (!user) {
-    throw new ApiError(httpStatus.NOT_FOUND, "User Not found");
+    throw new ApiError(httpStatus.NOT_FOUND, "invalid email or password");
   }
 
   // 2 Check if active
   if (!user.isActive) {
     throw new ApiError(httpStatus.FORBIDDEN, "User account is deactivated");
   }
-
+  // compare current password
+  const isMatch = await argon2.verify(user.password,currentPassword);
+  if(!isMatch){
+    throw new ApiError(httpStatus.NOT_ACCEPTABLE,"Current password is incorrect");
+  }
+  const password = newPassword;
   const hashedPassword = await hashPassword(password);
   user.password = hashedPassword;
   await user.save();

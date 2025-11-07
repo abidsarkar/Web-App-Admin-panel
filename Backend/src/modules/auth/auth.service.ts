@@ -13,7 +13,7 @@ import argon2 from "argon2";
 import ApiError from "../../errors/ApiError";
 import httpStatus from "http-status";
 import { JWT_SECRET_KEY } from "../../config/envConfig";
-import { emailSchema, otpSchema } from "./auth.zodSchema";
+import { emailSchema, loginSchema, otpSchema } from "./auth.zodSchema";
 import {
   generateOTP,
   otpExpireTime,
@@ -22,8 +22,9 @@ import {
 } from "./auth.utils";
 import { hashPassword } from "../../utils/hashManager";
 
-export const loginService = async (email: string, password: string) => {
-    
+export const loginService = async (data: z.infer<typeof loginSchema>) => {
+  const { email, password } = data;
+
   // 1️⃣ Find user by email
   const user = await EmployerInfo.findOne({ email }).select("+password");
   if (!user) {
@@ -32,7 +33,7 @@ export const loginService = async (email: string, password: string) => {
 
   // 2️⃣ Check if active
   if (!user.isActive) {
-    throw new ApiError(httpStatus.FORBIDDEN, "User account is deactivated --");
+    throw new ApiError(httpStatus.FORBIDDEN, "User account is deactivated!");
   }
 
   // 3️⃣ Compare password using Argon2
@@ -41,8 +42,22 @@ export const loginService = async (email: string, password: string) => {
   if (!isMatch) {
     throw new ApiError(httpStatus.UNAUTHORIZED, "invalid email or password");
   }
+  user.otp = undefined;
+  user.otpExpiresAt = undefined;
+  user.changePasswordExpiresAt = undefined;
+  user.isForgotPasswordVerified = undefined;
+  user.lastLoginAt = new Date();
+  await user.save();
+  const {
+    password: _,
+    __v,
+    otp,
+    otpExpiresAt,
+    changePasswordExpiresAt,
+    isForgotPasswordVerified,
+    ...safeUser
+  } = user.toObject();
 
-  // 4️⃣ Generate JWT
   const accessToken = generateAccessToken({
     id: user._id,
     role: user.role,
@@ -54,21 +69,18 @@ export const loginService = async (email: string, password: string) => {
     role: user.role,
     email: user.email,
   });
-  // 5️⃣ Prepare response (omit password)
-  const userData = {
-    id: user._id,
-    name: user.name,
-    email: user.email,
-    role: user.role,
-    isActive: user.isActive,
+
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Login successfully",
+    error: null,
+    data: {
+      accessToken,
+      refreshToken,
+      user: safeUser,
+    },
   };
-  user.lastLoginAt = new Date();
-  user.otp = undefined;
-  user.otpExpiresAt = undefined;
-  user.changePasswordExpiresAt = undefined;
-  user.isForgotPasswordVerified = undefined;
-  await user.save();
-  return { accessToken, refreshToken, user: userData };
 };
 // forgot password service
 export const forgotPasswordService = async (email: string) => {
