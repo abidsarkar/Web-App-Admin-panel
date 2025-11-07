@@ -23,3 +23,15 @@ export const roleCheckMiddleware = (requiredRole: string) => {
     next();
   };
 };
+export const roleCheckMiddlewareAdmins = (...allowedRoles: string[]) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    // Extract the role from req.user (set by the authenticateJWT middleware)
+    const role = req.user?.role;
+    
+    if (!role || !allowedRoles.includes(role)) {
+      return next(new ApiError(httpStatus.FORBIDDEN, "Access denied"));
+    }
+    // If roles match, allow the request to proceed to the next middleware/handler
+    next();
+  };
+};
