@@ -32,6 +32,7 @@ export interface ICustomer extends Document {
   isForgotPasswordVerified?: boolean;
   isActive: boolean;
   lastLogin: Date;
+  isDeleted:boolean;
   createdAt: Date;
   updatedAt: Date;
 }

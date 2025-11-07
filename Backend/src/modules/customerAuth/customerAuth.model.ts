@@ -63,7 +63,7 @@ const customerInformationSchema = new Schema<ICustomer>(
       enum: ["customer", "undefined"],
       default: "customer",
     },
-    
+
     password: {
       type: String,
       required: [true, "Password is required"],
@@ -88,11 +88,13 @@ const customerInformationSchema = new Schema<ICustomer>(
       type: Boolean,
       default: true,
     },
-    lastLogin:{
-      type:Date,
-      
-    }
-    
+    lastLogin: {
+      type: Date,
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true, versionKey: false }
 );

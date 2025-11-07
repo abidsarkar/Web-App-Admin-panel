@@ -37,7 +37,9 @@ export const loginService = async (data: z.infer<typeof loginSchema>) => {
   if (!user) {
     throw new ApiError(httpStatus.UNAUTHORIZED, "invalid email or password");
   }
-
+  if(user.isDeleted){
+    throw new ApiError(httpStatus.UNAUTHORIZED, "invalid email or password");
+  }
   // 2️⃣ Check if active
   if (!user.isActive) {
     throw new ApiError(httpStatus.FORBIDDEN, "User account is deactivated!");
@@ -53,6 +55,7 @@ export const loginService = async (data: z.infer<typeof loginSchema>) => {
   user.otpExpiresAt = undefined;
   user.changePasswordExpiresAt = undefined;
   user.isForgotPasswordVerified = undefined;
+  user.lastLogin = new Date();
   await user.save();
   const {
     password: _,
