@@ -219,7 +219,7 @@ export const changePassword_fromProfileCustomerController = catchAsync(
   }
 );
 //refresh token controller
-export const refreshTokenController = catchAsync(
+export const refreshTokenCustomerController = catchAsync(
   async (req: Request, res: Response) => {
     const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
     //console.log(refreshToken);
@@ -239,7 +239,7 @@ export const refreshTokenController = catchAsync(
     });
   }
 );
-export const logoutController = catchAsync(
+export const logoutCustomerController = catchAsync(
   async (req: Request, res: Response) => {
     res.clearCookie("refreshToken");
     res.clearCookie("accessToken");
