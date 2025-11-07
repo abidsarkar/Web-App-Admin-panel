@@ -1,4 +1,3 @@
-
 // src/controllers/auth.controller.ts
 import { Request, Response } from "express";
 import {
@@ -17,6 +16,7 @@ import {
   emailSchema,
   otpSchema,
   changePasswordSchema,
+  changePasswordFromProfileSchema,
 } from "./auth.zodSchema";
 import z from "zod";
 import sendResponse from "../../utils/sendResponse";
@@ -28,7 +28,6 @@ import {
 import ApiError from "../../errors/ApiError";
 export const loginController = catchAsync(
   async (req: Request, res: Response) => {
-    
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) {
       //todo const formattedErrors = parsed.error.format();
@@ -40,7 +39,7 @@ export const loginController = catchAsync(
         //todo errors2: z.prettifyError(parsed.error),
       });
     }
-    
+
     const { statusCode, success, message, error, data } = await loginService(
       parsed.data
     );
@@ -144,8 +143,8 @@ export const resendOTPController = catchAsync(
       message,
       error,
       data: {
-        forgotPasswordToken:data.forgotPasswordToken,
-        user:data.user
+        forgotPasswordToken: data.forgotPasswordToken,
+        user: data.user,
       },
     });
   }
@@ -153,7 +152,7 @@ export const resendOTPController = catchAsync(
 
 export const changePassword_fromProfileController = catchAsync(
   async (req: Request, res: Response) => {
-    const parsed = changePasswordSchema.safeParse(req.body);
+    const parsed = changePasswordFromProfileSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(httpStatus.BAD_REQUEST).json({
         success: false,
@@ -162,9 +161,16 @@ export const changePassword_fromProfileController = catchAsync(
         data: {},
       });
     }
-    const { email, password } = parsed.data;
+    const admin_id = req.user?.id;
+    const admin_role = req.user?.role;
+    const admin_email = req.user?.email;
     const { statusCode, success, message, error, data } =
-      await changePassword_FromProfileService(password, email);
+      await changePassword_FromProfileService(
+        parsed.data,
+        admin_id!,
+        admin_role!,
+        admin_email!
+      );
     sendAccessCookie(res, data?.accessToken);
     sendResponse(res, {
       statusCode,
@@ -172,8 +178,8 @@ export const changePassword_fromProfileController = catchAsync(
       message,
       error,
       data: {
-        accessToken:data?.accessToken,
-        user:data?.user,
+        accessToken: data?.accessToken,
+        user: data?.user,
       },
     });
   }

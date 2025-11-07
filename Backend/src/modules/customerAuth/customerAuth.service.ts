@@ -307,6 +307,7 @@ export const changePassword_FromProfileService = async (
   if(_id !==admin_id){
     throw new ApiError(httpStatus.UNAUTHORIZED,"You are not authorized to change this password");
   }
+  // 1 Find user by email 
   const user = await customerInfoModel.findById(_id).select("+password");
   if (!user) {
     throw new ApiError(httpStatus.NOT_FOUND, "invalid email or password");
