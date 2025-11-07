@@ -56,7 +56,6 @@ export const loginCustomerController = catchAsync(
     });
   }
 );
-//register new customer
 export const registerCustomerController = catchAsync(
   async (req: Request, res: Response) => {
     const parsed = registerNewCustomerSchema.safeParse(req.body);
@@ -82,7 +81,6 @@ export const registerCustomerController = catchAsync(
     });
   }
 );
-
 export const forgotPasswordCustomerController = catchAsync(
   async (req: Request, res: Response) => {
     const parsed = emailSchema.safeParse(req.body);
@@ -134,7 +132,7 @@ export const verifyForgotPasswordOTPCustomerController = catchAsync(
     });
   }
 );
-export const changePasswordController = catchAsync(
+export const changePasswordCustomerController = catchAsync(
   async (req: Request, res: Response) => {
     const parsed = changePasswordSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -145,19 +143,19 @@ export const changePasswordController = catchAsync(
         data: {},
       });
     }
-    const { email, password } = parsed.data;
+    
     const { statusCode, success, message, error, data } =
-      await PasswordChangeService(password, email);
+      await PasswordChangeService(parsed.data);
     sendResponse(res, {
       statusCode,
       success,
       message,
       error,
-      data: {},
+      data,
     });
   }
 );
-export const resendOTPController = catchAsync(
+export const resendOTPCustomerController = catchAsync(
   async (req: Request, res: Response) => {
     const parsed = emailSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -168,9 +166,9 @@ export const resendOTPController = catchAsync(
         data: {},
       });
     }
-    const { email } = parsed.data;
+  
     const { statusCode, success, message, error, data } =
-      await resendOTPService(email);
+      await resendOTPService(parsed.data);
     sendForgotPasswordCookie(res, data.forgotPasswordToken);
     sendResponse(res, {
       statusCode,
@@ -185,7 +183,7 @@ export const resendOTPController = catchAsync(
   }
 );
 
-export const changePassword_fromProfileController = catchAsync(
+export const changePassword_fromProfileCustomerController = catchAsync(
   async (req: Request, res: Response) => {
     const parsed = changePasswordSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -196,9 +194,9 @@ export const changePassword_fromProfileController = catchAsync(
         data: {},
       });
     }
-    const { email, password } = parsed.data;
+    
     const { statusCode, success, message, error, data } =
-      await changePassword_FromProfileService(password, email);
+      await changePassword_FromProfileService(parsed.data);
     sendAccessCookie(res, data?.accessToken);
     sendResponse(res, {
       statusCode,

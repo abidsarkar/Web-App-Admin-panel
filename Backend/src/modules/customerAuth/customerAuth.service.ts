@@ -14,6 +14,7 @@ import ApiError from "../../errors/ApiError";
 import httpStatus from "http-status";
 import { JWT_SECRET_KEY } from "../../config/envConfig";
 import {
+  changePasswordSchema,
   emailSchema,
   loginSchema,
   otpSchema,
@@ -131,12 +132,14 @@ export const registerService = async (
 };
 
 // forgot password service
-export const forgotPasswordService = async (data: z.infer<typeof emailSchema>) => {
+export const forgotPasswordService = async (
+  data: z.infer<typeof emailSchema>
+) => {
   //! check if email is valid using zod
   //? check if email is valid using zod
   //todo check if email is valid using zod
   // * check if email is valid using zod
- const {email}= data;
+  const { email } = data;
   // 2 Find user by email
   const user = await customerInfoModel.findOne({ email }).select("-password");
   if (!user) {
@@ -162,25 +165,24 @@ export const forgotPasswordService = async (data: z.infer<typeof emailSchema>) =
   const forgotPasswordToken = generateForgotPasswordToken({
     email: user.email,
   });
-   
-   return {
+
+  return {
     statusCode: httpStatus.OK,
     success: true,
     message: "Forgot password otp send to your email successful",
     error: null,
     data: {
-  
       forgotPasswordToken,
       user: {
-        email:user.email
+        email: user.email,
       },
     },
   };
 };
 export const verifyForgotPasswordOTPService = async (
-  data:z.infer<typeof otpSchema>
+  data: z.infer<typeof otpSchema>
 ) => {
-  const{otp,email}=data;
+  const { otp, email } = data;
   // 1 Find user by email
   const user = await customerInfoModel.findOne({ email }).select("+password");
   if (!user) {
@@ -213,13 +215,13 @@ export const verifyForgotPasswordOTPService = async (
   };
 };
 export const PasswordChangeService = async (
-  password: string,
-  email: string
+  data: z.infer<typeof changePasswordSchema>
 ) => {
+  const { email, password } = data;
   // 1 Find user by email
   const user = await customerInfoModel.findOne({ email });
   if (!user) {
-    throw new ApiError(httpStatus.NOT_FOUND, "User Not found22");
+    throw new ApiError(httpStatus.NOT_FOUND, "User Not found");
   }
 
   // 2 Check if active
@@ -236,7 +238,7 @@ export const PasswordChangeService = async (
   ) {
     throw new ApiError(
       httpStatus.BAD_REQUEST,
-      "password change time has expired"
+      "password change time has expired. request for new OTP"
     );
   }
   const hashedPassword = await hashPassword(password);
@@ -251,16 +253,14 @@ export const PasswordChangeService = async (
     success: true,
     message: "password change successfully",
     error: null,
-    data: {
-      accessToken: null,
-      user: null,
-    },
+    data: null,
   };
 };
 //resend otp service
-export const resendOTPService = async (email: string) => {
+export const resendOTPService = async (data: z.infer<typeof emailSchema>) => {
+  const { email } = data;
   // 1 Find user by email
-  const user = await customerInfoModel.findOne({ email }).select("+password");
+  const user = await customerInfoModel.findOne({ email }).select("-password");
   if (!user) {
     throw new ApiError(httpStatus.NOT_FOUND, "User Not found");
   }
@@ -283,23 +283,23 @@ export const resendOTPService = async (email: string) => {
   const forgotPasswordToken = generateForgotPasswordToken({
     email: user.email,
   });
-   return {
+  return {
     statusCode: httpStatus.OK,
     success: true,
     message: "Login successfully",
     error: null,
     data: {
-    
       forgotPasswordToken,
-      user: "ancd",
+      user: user.email,
     },
   };
 };
 //change password from profile as known the old password
 export const changePassword_FromProfileService = async (
-  password: string,
-  email: string
+  data: z.infer<typeof changePasswordSchema>,
+  
 ) => {
+  const {email,password}= data;
   // 1 Find user by email
   const user = await customerInfoModel.findOne({ email });
   if (!user) {
@@ -319,13 +319,15 @@ export const changePassword_FromProfileService = async (
     role: user.role,
     email: user.email,
   });
-  const userData = {
-    id: user._id,
-    name: user.firstName,
-    email: user.email,
-    role: user.role,
-    isActive: user.isActive,
-  };
+  const {
+    password: _,
+    __v,
+    otp,
+    otpExpiresAt,
+    changePasswordExpiresAt,
+    isForgotPasswordVerified,
+    ...safeUser
+  } = user.toObject();
   return {
     statusCode: httpStatus.ACCEPTED,
     success: true,
@@ -333,7 +335,7 @@ export const changePassword_FromProfileService = async (
     error: null,
     data: {
       accessToken,
-      user: userData,
+      user: safeUser,
     },
   };
 };

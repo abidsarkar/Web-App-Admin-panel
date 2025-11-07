@@ -11,6 +11,7 @@ import helmet from "helmet";
 import { template } from "./rootTemplate";
 import { globalRateLimiter } from "./middlewares/rateLimiter";
 import mongoSanitizer, { SanitizedRequest } from 'mongo-sanitizer';
+import { FRONTEND_URL } from "./config/envConfig";
 // Create an Express application
 const app: Application = express();
 //for global no sql injection prevent
@@ -28,12 +29,12 @@ app.use(cookieParser());
 
 app.use(
   cors({
-    origin: "http:localhost:5001",
+    origin: FRONTEND_URL as string,
     credentials: true,
   })
 );
 
-app.use(express.static("public"));
+
 // ✅ Serve static files from root-level "public" folder
 app.use("/public", express.static(path.join(__dirname, "../public")));
 //application router

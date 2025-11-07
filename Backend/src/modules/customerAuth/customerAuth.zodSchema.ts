@@ -66,3 +66,14 @@ export const changePasswordSchema = z
     message: "Passwords do not match",
     path: ["confirmPassword"], // highlight confirmPassword field
   });
+export const changePasswordFromProfileSchema = z
+  .object({
+    _id: z.string().trim().min(2).max(100),
+    currentPassword: passwordSchema,
+    newPassword: passwordSchema,
+    confirmPassword: passwordSchema,
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"], // highlight confirmPassword field
+  });

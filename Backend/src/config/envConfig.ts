@@ -15,3 +15,4 @@ export const MAX_FILE_SIZE = Number(process.env.MAX_FILE_SIZE) || 10 * 1024 * 10
 //console.log("the number",typeof MAX_PROFILE_PIC_SIZE); // "number"
 export const NODE_ENV = process.env.NODE_ENV ?? "development";
 export const OTP_EXPIRE_TIME = Number(process.env.OTP_EXPIRE_TIME) || 5*60*1000;
+export const FRONTEND_URL  = process.env.FRONTEND_URL ;
