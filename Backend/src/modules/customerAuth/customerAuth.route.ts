@@ -16,4 +16,4 @@ router.post("/resend-otp",otpResendRateLimiter, resendOTPCustomerController);
 router.post("/change-pass-from-profile",otpResendRateLimiter,verifyAccessTokenMiddleware, changePassword_fromProfileCustomerController);
 router.post("/logout", logoutCustomerController);
 router.post("/refresh-token",verifyRefreshTokenMiddleware,roleCheckMiddleware("customer"), refreshTokenCustomerController);
-export const customerRoutes = router;
+export const customerAuthRoutes = router;
