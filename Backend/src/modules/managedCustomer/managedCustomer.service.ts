@@ -1,4 +1,5 @@
-import z from "zod";
+import fs from "fs";
+import z, { size } from "zod";
 import {
   generateAccessToken,
   generateForgotPasswordToken,
@@ -14,10 +15,12 @@ import ApiError from "../../errors/ApiError";
 import httpStatus from "http-status";
 import { JWT_SECRET_KEY } from "../../config/envConfig";
 import {
+  fileSchema,
   getProfileForAdminSchema,
   getProfileSchema,
   updateCustomerProfileSchema,
 } from "./managedCustomer.zodSchema";
+import path from "path";
 
 export const getProfileService = async (
   data: z.infer<typeof getProfileSchema>,
@@ -220,6 +223,132 @@ export const updateCustomerProfileService = async (
     data: {
       accessToken,
       user: updatedCustomer.toObject(),
+    },
+  };
+};
+export const updateCustomerProfilePicService = async (
+  profilePictureData: z.infer<typeof fileSchema>,
+  customer_id: string
+) => {
+  if (!profilePictureData) throw new ApiError(400, "No file uploaded");
+  //check if customer exists
+  const existingCustomer = await customerInfoModel.findById(customer_id);
+
+  if (!existingCustomer || existingCustomer.isDeleted) {
+    throw new ApiError(httpStatus.NOT_FOUND, "User not found!");
+  }
+  //!logic for delete old image and upload the new one
+  //delete
+  // 🧹 Delete old profile picture if exists
+  if (existingCustomer.profilePicture?.filePathURL) {
+    const oldPath = path.join(
+      process.cwd(),
+      existingCustomer.profilePicture.filePathURL
+    );
+    if (oldPath === "public/demoImage/profile-picture-placeholder.png") {
+    } else if (fs.existsSync(oldPath)) {
+      fs.unlinkSync(oldPath);
+    }
+  }
+
+  //change the info first
+  const updatePayload = {
+    profilePicture: {
+      filePathURL: `public/uploads/customer_profile_picture/${profilePictureData?.filename}`,
+      fileOriginalName: profilePictureData?.originalname,
+      fileServerName: profilePictureData?.filename,
+      size: profilePictureData?.size,
+      mimetype: profilePictureData?.mimetype,
+    },
+  };
+  // Update the profile picture employee
+  const updatedCustomer = await customerInfoModel.findByIdAndUpdate(
+    existingCustomer._id,
+    updatePayload,
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
+  if (!updatedCustomer) {
+    throw new ApiError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      "Failed to update employee profile picture"
+    );
+  }
+  // Convert to plain JS object
+  // Remove sensitive fields
+  const {
+    password,
+    __v,
+    otp,
+    otpExpiresAt,
+    changePasswordExpiresAt,
+    isForgotPasswordVerified,
+    isDeleted,
+    ...safeUser
+  } = updatedCustomer.toObject();
+  // 🔑 Generate access token for admin (if needed)
+  const accessToken = generateAccessToken({
+    id: updatedCustomer._id.toString(),
+    role: updatedCustomer.role,
+    email: updatedCustomer.email,
+  });
+
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Customer profile picture updated successfully!",
+    error: null,
+    data: {
+      accessToken,
+      customer: safeUser,
+    },
+  };
+};
+export const deleteCustomerProfileService = async (
+  data: z.infer<typeof getProfileSchema>,
+  customer_id: string
+) => {
+  const { _id } = data;
+  if (_id !== customer_id) {
+    throw new ApiError(
+      httpStatus.UNAUTHORIZED,
+      "You are not authorized to delete this account"
+    );
+  }
+  // Check if customer exists and is active
+  const existingCustomer = await customerInfoModel.findById(customer_id);
+  if (!existingCustomer || existingCustomer.isDeleted) {
+    throw new ApiError(httpStatus.NOT_FOUND, "User not found");
+  }
+
+  if (!existingCustomer.isActive) {
+    throw new ApiError(
+      httpStatus.FORBIDDEN,
+      "This account is deactivated, please contact help center"
+    );
+  }
+
+  const deleteAccount = await customerInfoModel.findByIdAndUpdate(customer_id, {
+    isDeleted: true,
+    deletedAt: new Date(),
+  });
+
+  if (!deleteAccount) {
+    throw new ApiError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      "Failed to delete profile"
+    );
+  }
+
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Profile delete successfully ",
+    error: null,
+    data: {
+      customer: null,
     },
   };
 };

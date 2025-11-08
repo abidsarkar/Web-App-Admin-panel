@@ -80,7 +80,16 @@ const productManyPicStorage = multer.diskStorage({
     cb(null, filename);
   },
 });
-
+//customer profile picture
+const customerPictureStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, createUploadFolder("customer_profile_picture"));
+  },
+  filename: (req, file, cb) => {
+    const filename = `${Date.now()}-${file.originalname}`;
+    cb(null, filename);
+  },
+});
 // **Profile Picture File Filter and Size Limit**
 const profilePictureFilter = (req: any, file: any, cb: any) => {
   const allowedTypes = /jpeg|jpg|png|webp|avif/;
@@ -101,12 +110,35 @@ const profilePictureFilter = (req: any, file: any, cb: any) => {
   }
 };
 
-const profilePictureUpload = multer({
+export const profilePictureUpload = multer({
   storage: profilePictureStorage,
   fileFilter: profilePictureFilter,
   limits: { fileSize: MAX_PROFILE_PIC_SIZE }, // 5MB size limit for profile picture
 }).single("profilePicture");
+//customer profile picture upload
+const customerProfilePictureFilter = (req: any, file: any, cb: any) => {
+  const allowedTypes = /jpeg|jpg|png|webp|avif/;
+  const extname = allowedTypes.test(
+    path.extname(file.originalname).toLowerCase()
+  );
+  const mimeType = allowedTypes.test(file.mimetype);
 
+  if (mimeType && extname) {
+    return cb(null, true); // Allow the file if it matches the filter
+  } else {
+    return cb(
+      new ApiError(
+        400,
+        'Invalid file type for profile picture. Allowed types: jpeg,JPG, PNG,webp,avif.And filed "profilePicture" required'
+      )
+    );
+  }
+};
+export const customerProfilePictureUpload = multer({
+  storage: customerPictureStorage,
+  fileFilter: customerProfilePictureFilter,
+  limits: { fileSize: MAX_PROFILE_PIC_SIZE }, // 5MB size limit for profile picture
+}).single("profilePicture");
 // **logo image File Filter and Size Limit**
 const logoFilter = (req: any, file: any, cb: any) => {
   const allowedTypes = /jpeg|jpg|png|webp|avif/;
@@ -127,7 +159,7 @@ const logoFilter = (req: any, file: any, cb: any) => {
   }
 };
 
-const logoUpload = multer({
+export const logoUpload = multer({
   storage: logoStorage,
   fileFilter: logoFilter,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB size limit for profile picture
@@ -153,7 +185,7 @@ const bannerFilter = (req: any, file: any, cb: any) => {
   }
 };
 
-const bannerUpload = multer({
+export const bannerUpload = multer({
   storage: bannerStorage,
   fileFilter: bannerFilter,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB size limit for banner
@@ -179,7 +211,7 @@ const cvFilter = (req: any, file: any, cb: any) => {
   }
 };
 
-const cvUpload = multer({
+export const cvUpload = multer({
   storage: cvStorage,
   fileFilter: cvFilter,
   limits: { fileSize: MAX_FILE_SIZE }, // 10MB size limit for CV
@@ -204,7 +236,7 @@ const productCoverPictureFilter = (req: any, file: any, cb: any) => {
   }
 };
 
-const productCoverPictureUpload = multer({
+export const productCoverPictureUpload = multer({
   storage: productCoverPictureStorage,
   fileFilter: productCoverPictureFilter,
   limits: { fileSize: MAX_PRODUCT_COVER_PIC_SIZE },
@@ -228,24 +260,15 @@ const productManyPicFilter = (req: any, file: any, cb: any) => {
     );
   }
 };
-const uploadManyProductPic = multer({
+export const uploadManyProductPic = multer({
   storage: productManyPicStorage,
   fileFilter: productManyPicFilter,
   limits: { fileSize: MAX_PRODUCT_COVER_PIC_SIZE },
 }).array("productImages", 10); // Allow up to 10 images
-const uploadSingleReplaceImage = multer({
+export const uploadSingleReplaceImage = multer({
   storage: productManyPicStorage, // reuse from before
   fileFilter: productManyPicFilter,
   limits: { fileSize: MAX_PRODUCT_COVER_PIC_SIZE },
 }).single("newImage");
 
-// Export all the separate multer instances
-export {
-  profilePictureUpload,
-  logoUpload,
-  bannerUpload,
-  cvUpload,
-  productCoverPictureUpload,
-  uploadManyProductPic,
-  uploadSingleReplaceImage,
-};
+

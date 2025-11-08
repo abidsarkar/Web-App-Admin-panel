@@ -16,10 +16,13 @@ import {
   getProfileForAdminSchema,
   getProfileSchema,
   updateCustomerProfileSchema,
+  uploadProfilePictureSchema,
 } from "./managedCustomer.zodSchema";
 import {
+  deleteCustomerProfileService,
   getProfileForAdminService,
   getProfileService,
+  updateCustomerProfilePicService,
   updateCustomerProfileService,
 } from "./managedCustomer.service";
 
@@ -86,7 +89,7 @@ export const getProfileManagedCustomerController_Admin = catchAsync(
 );
 //!get all customer for admin with filters
 //!get all customer for admin with filters
-export const updateProfileManagedCustomerController = catchAsync(
+export const updateManagedCustomerController = catchAsync(
   async (req: Request, res: Response) => {
     const parsed = updateCustomerProfileSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -110,6 +113,59 @@ export const updateProfileManagedCustomerController = catchAsync(
       data: {
         accessToken: data?.accessToken,
         user: data?.user,
+      },
+    });
+  }
+);
+export const updateCustomerProfilePicController = catchAsync(
+  async (req: Request, res: Response) => {
+    const parsed = uploadProfilePictureSchema.safeParse(req.file);
+    if (!parsed.success) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "update employee profile picture Validation Error",
+        errors: z.treeifyError(parsed.error),
+      });
+    }
+    const customer_id = req.user?.id;
+
+    const { ...parsedFile } = req.file;
+
+    const { statusCode, success, message, error, data } =
+      await updateCustomerProfilePicService(parsedFile, customer_id!);
+    sendAccessCookie(res, data?.accessToken);
+    sendResponse(res, {
+      statusCode,
+      success,
+      message,
+      error,
+      data: {
+        accessToken: data?.accessToken,
+        customer: data?.customer,
+      },
+    });
+  }
+);
+export const deleteCustomerProfileController = catchAsync(
+  async (req: Request, res: Response) => {
+    const parsed = getProfileSchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "delete customer account Validation Error",
+        errors: z.treeifyError(parsed.error),
+      });
+    }
+    const customer_id = req.user?.id;
+    const { statusCode, success, message, error, data } =
+      await deleteCustomerProfileService(parsed.data, customer_id!);
+    sendResponse(res, {
+      statusCode,
+      success,
+      message,
+      error,
+      data: {
+        customer: data?.customer,
       },
     });
   }

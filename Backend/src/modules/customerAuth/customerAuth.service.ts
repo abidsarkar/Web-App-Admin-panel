@@ -37,7 +37,7 @@ export const loginService = async (data: z.infer<typeof loginSchema>) => {
   if (!user) {
     throw new ApiError(httpStatus.UNAUTHORIZED, "invalid email or password");
   }
-  if(user.isDeleted){
+  if (user.isDeleted) {
     throw new ApiError(httpStatus.UNAUTHORIZED, "invalid email or password");
   }
   // 2️⃣ Check if active
@@ -93,32 +93,96 @@ export const loginService = async (data: z.infer<typeof loginSchema>) => {
 export const registerService = async (
   data: z.infer<typeof registerNewCustomerSchema>
 ) => {
-  const { email, password } = data;
-  // 1️⃣ Find user by email
-  const existUser = await customerInfoModel
-    .findOne({ email })
-    .select("-password");
-  if (existUser) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "User already register");
+  const { email, password, firstName, lastName, phone,  address } = data;
+  
+  // 1️⃣ Find user by email (including deleted users)
+  const existingUser = await customerInfoModel.findOne({ email });
+
+  // If user exists and is deleted (soft deleted), restore and update
+  if (existingUser && existingUser.isDeleted) {
+    const hashedPassword = await hashPassword(password);
+    
+    // Update the existing document instead of creating new one
+    const restoredCustomer = await customerInfoModel.findByIdAndUpdate(
+      existingUser._id,
+      {
+        $set: {
+          firstName,
+          lastName,
+          phone,
+          secondaryPhoneNumber:undefined,
+          address,
+          password: hashedPassword,
+          isDeleted: false,
+          deletedAt: null,
+          isActive: true,
+          updatedAt: new Date()
+        }
+      },
+      { 
+        new: true,
+        runValidators: true 
+      }
+    ).select("-password -__v -otp -otpExpiresAt -changePasswordExpiresAt");
+
+    if (!restoredCustomer) {
+      throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to restore account");
+    }
+
+    // Send welcome back email
+    // await sendWelcomeBackEmail({
+    //   email: restoredCustomer.email,
+    //   name: `${restoredCustomer.firstName} ${restoredCustomer.lastName}`,
+    // });
+
+    return {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Account restored successfully",
+      error: null,
+      data: {
+        user: {
+          _id: restoredCustomer._id,
+          email: restoredCustomer.email,
+          role: restoredCustomer.role,
+          name: `${restoredCustomer.firstName} ${restoredCustomer.lastName}`,
+          firstName: restoredCustomer.firstName,
+          lastName: restoredCustomer.lastName,
+          phone: restoredCustomer.phone,
+        },
+      },
+    };
   }
+
+  // If user exists and is NOT deleted
+  if (existingUser && !existingUser.isDeleted) {
+    throw new ApiError(httpStatus.CONFLICT, "User already registered with this email");
+  }
+
+  // If no user exists, create new one
   const hashedPassword = await hashPassword(password);
   const newCustomer = new customerInfoModel({
     ...data,
     password: hashedPassword,
     profilePicture: {
-      filePathURL: `public/uploads/profile_pictures/defaultProfilePictureAADD.png`,
-      fileOriginalName: "defaultProfilePictureAADD.png",
-      fileServerName: "defaultProfilePictureAADD.png",
+      filePathURL: `public/demoImage/profile-picture-placeholder.png`,
+      fileOriginalName: "profile-picture-placeholder.png",
+      fileServerName: "profile-picture-placeholder.png",
       size: 1000,
       mimetype: "png",
     },
   });
-  //send mail
+
+  await newCustomer.save();
+
+  // Remove sensitive fields
+  const { password: _, __v, otp, otpExpiresAt, changePasswordExpiresAt, ...safeUser } = newCustomer.toObject();
+
+  // Send welcome email
   // await sendCreateAccountEmail({
   //   email: newCustomer.email,
   //   name: `${newCustomer.firstName} ${newCustomer.lastName}`,
   // });
-  await newCustomer.save();
 
   return {
     statusCode: httpStatus.CREATED,
@@ -126,15 +190,10 @@ export const registerService = async (
     message: "Account created successfully",
     error: null,
     data: {
-      user: {
-        email: newCustomer.email,
-        role: newCustomer.role,
-        name: `${newCustomer.firstName} ${newCustomer.lastName}`,
-      },
+      user: safeUser,
     },
   };
 };
-
 // forgot password service
 export const forgotPasswordService = async (
   data: z.infer<typeof emailSchema>
@@ -301,16 +360,19 @@ export const resendOTPService = async (data: z.infer<typeof emailSchema>) => {
 //change password from profile as known the old password
 export const changePassword_FromProfileService = async (
   data: z.infer<typeof changePasswordFromProfileSchema>,
-  admin_id:string,
-  admin_role:string,
-  admin_email:string
+  admin_id: string,
+  admin_role: string,
+  admin_email: string
 ) => {
-  const { _id, newPassword,currentPassword } = data;
+  const { _id, newPassword, currentPassword } = data;
   //check if the user is same as logged in user
-  if(_id !==admin_id){
-    throw new ApiError(httpStatus.UNAUTHORIZED,"You are not authorized to change this password");
+  if (_id !== admin_id) {
+    throw new ApiError(
+      httpStatus.UNAUTHORIZED,
+      "You are not authorized to change this password"
+    );
   }
-  // 1 Find user by email 
+  // 1 Find user by email
   const user = await customerInfoModel.findById(_id).select("+password");
   if (!user) {
     throw new ApiError(httpStatus.NOT_FOUND, "invalid email or password");
@@ -321,9 +383,12 @@ export const changePassword_FromProfileService = async (
     throw new ApiError(httpStatus.FORBIDDEN, "User account is deactivated");
   }
   // compare current password
-  const isMatch = await argon2.verify(user.password,currentPassword);
-  if(!isMatch){
-    throw new ApiError(httpStatus.NOT_ACCEPTABLE,"Current password is incorrect");
+  const isMatch = await argon2.verify(user.password, currentPassword);
+  if (!isMatch) {
+    throw new ApiError(
+      httpStatus.NOT_ACCEPTABLE,
+      "Current password is incorrect"
+    );
   }
   const password = newPassword;
   const hashedPassword = await hashPassword(password);

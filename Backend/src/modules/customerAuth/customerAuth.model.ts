@@ -94,7 +94,12 @@ const customerInformationSchema = new Schema<ICustomer>(
     isDeleted: {
       type: Boolean,
       default: false,
+      
     },
+    deletedAt:{
+      type:Date,
+      select:false
+    }
   },
   { timestamps: true, versionKey: false }
 );

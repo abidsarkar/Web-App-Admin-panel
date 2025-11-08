@@ -12,11 +12,16 @@ import {
 } from "../../middlewares/verifyTokenMiddleware";
 
 import { adminRoleCheckMiddleware } from "../../middlewares/roleGuard";
-import { profilePictureUpload } from "../../multer/multer.upload";
 import {
+  customerProfilePictureUpload,
+  profilePictureUpload,
+} from "../../multer/multer.upload";
+import {
+    deleteCustomerProfileController,
   getProfileManagedCustomerController,
   getProfileManagedCustomerController_Admin,
-  updateProfileManagedCustomerController,
+  updateCustomerProfilePicController,
+  updateManagedCustomerController,
 } from "./managedCustomer.controller";
 import {
   roleCheckMiddleware,
@@ -39,7 +44,14 @@ router.patch(
   "/update",
   verifyAccessTokenMiddleware,
   roleCheckMiddleware("customer"),
-  updateProfileManagedCustomerController
+  updateManagedCustomerController
+);
+router.patch(
+  "/update-profile-pic",
+  verifyAccessTokenMiddleware,
+  roleCheckMiddleware("customer"),
+  customerProfilePictureUpload,
+  updateCustomerProfilePicController
 );
 // router.get(
 //   "/get-all",
@@ -53,23 +65,11 @@ router.patch(
 //   verifyAccessTokenMiddleware,
 //   getProfileManagedCustomerController
 // );
-// router.patch(
-//   "/update",
-//   adminRoleCheckMiddleware("superAdmin"),
-//   verifyAccessTokenMiddleware,
-//   getProfileManagedCustomerController
-// );
-// router.patch(
-//   "/update-profile-pic",
-//   adminRoleCheckMiddleware("superAdmin"),
-//   verifyAccessTokenMiddleware,
-//   profilePictureUpload,
-//   getProfileManagedCustomerController
-// );
-// router.delete(
-//   "/delete",
-//   adminRoleCheckMiddleware("superAdmin"),
-//   verifyAccessTokenMiddleware,
-//   getProfileManagedCustomerController
-// );
+
+router.delete(
+  "/delete",
+  verifyAccessTokenMiddleware,
+  roleCheckMiddleware("customer"),
+  deleteCustomerProfileController
+);
 export const customerManagementRouts = router;

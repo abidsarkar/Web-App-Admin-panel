@@ -33,6 +33,7 @@ export interface ICustomer extends Document {
   isActive: boolean;
   lastLogin: Date;
   isDeleted:boolean;
+  deletedAt?:Date;
   createdAt: Date;
   updatedAt: Date;
 }
