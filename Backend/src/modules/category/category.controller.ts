@@ -119,6 +119,7 @@ export const getCategoryForAdminController = catchAsync(
       message,
       error,
       data: {
+        totalCategory: data?.totalCategoryCount,
         category: data?.category,
         user: data?.user,
       },
@@ -192,7 +193,7 @@ export const deleteCategoryController = catchAsync(
       },
     });
   }
-);
+); //! next plan is don't delete subcategory just move it to a recycle bin type category
 //create sub category
 export const createSubCategoryController = catchAsync(
   async (req: Request, res: Response) => {
@@ -303,13 +304,19 @@ export const getSubCategoryForAdminController = catchAsync(
     const admin_role = req.user?.role; //supper admin role form accessToken
     const admin_email = req.user?.email; //supper admin email form accessToken
     const { statusCode, success, message, error, data } =
-      await getSubCategoryForAdminService(parsed.data,admin_id!,admin_role!,admin_email!);
+      await getSubCategoryForAdminService(
+        parsed.data,
+        admin_id!,
+        admin_role!,
+        admin_email!
+      );
     sendResponse(res, {
       statusCode,
       success,
       message,
       error,
       data: {
+        totalSubCategory: data?.totalSubCategoryCount,
         subCategory: data?.result,
       },
     });

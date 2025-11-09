@@ -18,6 +18,7 @@ export interface ISubCategory extends Document {
     email: string;
     updatedAt: Date;
   };
+  isDisplayed?: boolean;
 }
 
 export interface ICategory extends Document {
@@ -36,6 +37,7 @@ export interface ICategory extends Document {
     email: string;
     updatedAt: Date;
   };
+  isDisplayed?: boolean;
   createdAt: Date;
   updatedAt?: Date;
 }

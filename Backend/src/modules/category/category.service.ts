@@ -18,6 +18,7 @@ import {
   updateSubCategorySchema,
 } from "./category.zodSchema";
 import { EmployerInfo } from "../auth/auth.model";
+import mongoose from "mongoose";
 
 export const createCategoryService = async (
   data: z.infer<typeof createCategorySchema>,
@@ -25,19 +26,10 @@ export const createCategoryService = async (
   admin_role: string,
   admin_email: string
 ) => {
-  // 🔒 Role-based access control
-  if (admin_role !== "editor" && admin_role !== "superAdmin") {
-    throw new ApiError(
-      httpStatus.UNAUTHORIZED,
-      "You don't have access to create new category"
-    );
-  }
-
   const { categoryId, categoryName } = data;
   // 1️⃣ Find user by email and check if employee already exists
-  const existingUser = await EmployerInfo.findOne({
-    email: admin_email,
-  }).select("-password");
+  const existingUser =
+    await EmployerInfo.findById(admin_id).select("-password");
 
   if (!existingUser) {
     throw new ApiError(
@@ -46,7 +38,7 @@ export const createCategoryService = async (
     );
   }
 
-  if (admin_role === "editor" && existingUser.isActive == false) {
+  if (existingUser.isActive == false) {
     throw new ApiError(
       httpStatus.UNAUTHORIZED,
       "Your id is Deactivated please contact superAdmin"
@@ -101,31 +93,49 @@ export const getCategoryService = async (
   const { categoryId, subCategory } = data;
 
   let result;
-
-  // ✅ 1️⃣ If categoryId not provided → return all categories
+  const displayableFilter = { isDisplayed: true };
+  
+  // Define the subcategory fields you want to return
+  const subCategoryFields = "subCategoryName subCategoryId categoryId categoryName isDisplayed createdAt updatedAt";
+  
+  // ✅ 1️⃣ If categoryId not provided → return all categories with subcategories
   if (!categoryId) {
-    result = await CategoryModel.find().select(
-      "-__v -createdBy -updatedBy -createdAt -updatedAt"
-    );
+    result = await CategoryModel.find(displayableFilter)
+      .populate({
+        path: "subCategories",
+        select: subCategoryFields,
+        match: { isDisplayed: true }
+      })
+      .select("-__v -createdBy -updatedBy -createdAt -updatedAt -isDisplayed")
+      .sort({ categoryName: 1 }); // Optional: sort by category name
   }
 
   // ✅ 2️⃣ If categoryId provided
   else {
-    const existingCategory = await CategoryModel.findOne({ categoryId }).select(
-      "-__v -createdBy -updatedBy -createdAt -updatedAt"
-    );
+    const existingCategory = await CategoryModel.findOne({
+      categoryId,
+      ...displayableFilter,
+    }).select("-__v -createdBy -updatedBy -createdAt -updatedAt -isDisplayed");
 
     if (!existingCategory) {
       throw new ApiError(httpStatus.NOT_FOUND, "Category not found");
     }
 
-    // ✅ 3️⃣ If subCategory=true → populate subcategories
+    // ✅ 3️⃣ If subCategory=true → populate with full subcategory details
     if (subCategory) {
-      result = await CategoryModel.findOne({ categoryId })
-        .populate("subCategories", "subCategoryName subCategoryId")
-        .select("-__v -createdBy -updatedBy -createdAt -updatedAt");
+      result = await CategoryModel.findOne({ 
+        categoryId,
+        ...displayableFilter 
+      })
+        .populate({
+          path: "subCategories",
+          select: subCategoryFields,
+          match: { isDisplayed: true },
+          options: { sort: { subCategoryName: 1 } } // Optional: sort subcategories
+        })
+        .select("-__v -createdBy -updatedBy -createdAt -updatedAt -isDisplayed");
     } else {
-      // ✅ 4️⃣ Otherwise, return category only
+      // ✅ 4️⃣ Return category only (subCategories will be array of ObjectIds)
       result = existingCategory;
     }
   }
@@ -147,44 +157,65 @@ export const getCategoryForAdminService = async (
   admin_role: string,
   admin_email: string
 ) => {
-  // 🔒 Role-based access control
-  if (
-    admin_role !== "editor" &&
-    admin_role !== "superAdmin" &&
-    admin_role !== "subAdmin"
-  ) {
-    throw new ApiError(
-      httpStatus.UNAUTHORIZED,
-      "You don't have access to view full details of category"
-    );
-  }
-  const { categoryId, subCategory } = data;
+  const { categoryId, subCategory, isDisplayed } = data;
 
   let result;
+  let query: any = {};
 
-  // ✅ 1️⃣ If categoryId not provided → return all categories
+  // ➡️ Build dynamic filter based on provided fields
+  if (isDisplayed !== undefined) {
+    query.isDisplayed = isDisplayed;
+  }
+
+  // ➡️ Get the total count of categories (with filter if applied)
+  const totalCategoryCount = await CategoryModel.countDocuments(query);
+
+  // Define the subcategory fields you want to return for admin
+  const subCategoryFields = "subCategoryName subCategoryId categoryId categoryName isDisplayed createdAt updatedAt createdBy updatedBy";
+
+  // ✅ 1️⃣ If categoryId not provided → return all categories (with optional filters)
   if (!categoryId) {
-    result = await CategoryModel.find().select("-__v");
+    if (subCategory) {
+      // Return all categories WITH subcategories
+      result = await CategoryModel.find(query)
+        .populate({
+          path: "subCategories",
+          select: subCategoryFields,
+          // Admin can see all subcategories, not just displayable ones
+          match: isDisplayed !== undefined ? { isDisplayed } : {} // Apply filter if provided
+        })
+        .select("-__v")
+        .sort({ categoryName: 1 });
+    } else {
+      // Return all categories WITHOUT subcategories
+      result = await CategoryModel.find(query)
+        .select("-__v -subCategories")
+        .sort({ categoryName: 1 });
+    }
   }
 
   // ✅ 2️⃣ If categoryId provided
   else {
-    const existingCategory = await CategoryModel.findOne({ categoryId }).select(
-      "-__v"
-    );
+    // Add categoryId to the query and keep other filters
+    query.categoryId = categoryId;
 
-    if (!existingCategory) {
-      throw new ApiError(httpStatus.NOT_FOUND, "Category not found");
+    if (subCategory) {
+      // Return specific category WITH subcategories
+      result = await CategoryModel.findOne(query)
+        .populate({
+          path: "subCategories",
+          select: subCategoryFields,
+          match: isDisplayed !== undefined ? { isDisplayed } : {} // Apply filter if provided
+        })
+        .select("-__v");
+    } else {
+      // Return specific category WITHOUT subcategories
+      result = await CategoryModel.findOne(query)
+        .select("-__v -subCategories");
     }
 
-    // ✅ 3️⃣ If subCategory=true → populate subcategories
-    if (subCategory) {
-      result = await CategoryModel.findOne({ categoryId })
-        .populate("subCategories", "subCategoryName subCategoryId")
-        .select("-__v ");
-    } else {
-      // ✅ 4️⃣ Otherwise, return category only
-      result = existingCategory;
+    if (!result) {
+      throw new ApiError(httpStatus.NOT_FOUND, "Category not found");
     }
   }
 
@@ -194,6 +225,7 @@ export const getCategoryForAdminService = async (
     message: "Category fetched for admin successfully",
     error: null,
     data: {
+      totalCategoryCount,
       category: result,
       user: {
         id: admin_id,
@@ -209,42 +241,34 @@ export const updateCategoryService = async (
   admin_role: string,
   admin_email: string
 ) => {
-  // 🔒 Role-based access control
-  if (admin_role !== "editor" && admin_role !== "superAdmin") {
-    throw new ApiError(
-      httpStatus.UNAUTHORIZED,
-      "You don't have access to update employee"
-    );
-  }
   // ✅ Extract fields from request body
-  const { categoryId, newCategoryId, newCategoryName } = data;
-  if (!newCategoryName && !newCategoryId) {
-    throw new ApiError(
-      httpStatus.BAD_REQUEST,
-      'Please provide at least one field to update,"newCategoryId","newCategoryName"'
-    );
-  }
+  const { _id, isDisplayed, newCategoryId, newCategoryName } = data;
+
   // 🧩 2️⃣ Check if admin exists and is active
-  const existingUser = await EmployerInfo.findOne({
-    email: admin_email,
-  }).select("-password");
+  const existingUser = await EmployerInfo.findById(admin_id).select("-password");
   if (!existingUser) {
     throw new ApiError(httpStatus.NOT_FOUND, "Employee ID not found");
   }
 
-  if (admin_role === "editor" && existingUser.isActive === false) {
+  if (existingUser.isActive === false) {
     throw new ApiError(httpStatus.UNAUTHORIZED, "Your account is deactivated");
   }
+  
   // 🔍 1️⃣ Verify old categoryId exists
-  const oldCategory = await CategoryModel.findOne({ categoryId });
+  const oldCategory = await CategoryModel.findById(_id);
   if (!oldCategory) {
     throw new ApiError(
       httpStatus.NOT_FOUND,
       "Old categoryId is invalid or not found"
     );
   }
+  
+  // Store old values for updating subcategories
+  const oldCategoryId = oldCategory.categoryId;
+  const oldCategoryName = oldCategory.categoryName;
+  
   // 🔍 2️⃣ Ensure newCategoryId not already used (if provided)
-  if (newCategoryId) {
+  if (newCategoryId && newCategoryId !== oldCategory.categoryId) {
     const duplicate = await CategoryModel.findOne({
       categoryId: newCategoryId,
     });
@@ -252,9 +276,12 @@ export const updateCategoryService = async (
       throw new ApiError(httpStatus.CONFLICT, "New categoryId already exists");
     }
   }
-  // ⚙️ 3️⃣ Perform the update
+  
+  // ⚙️ 3️⃣ Perform the category update
   if (newCategoryName) oldCategory.categoryName = newCategoryName;
+  if (isDisplayed !== undefined) oldCategory.isDisplayed = isDisplayed;
   if (newCategoryId) oldCategory.categoryId = newCategoryId;
+  
   oldCategory.updatedBy = {
     id: admin_id,
     role: admin_role,
@@ -264,7 +291,34 @@ export const updateCategoryService = async (
 
   await oldCategory.save();
 
-  // 🧹 4️⃣ Return safe response
+  // 🔄 4️⃣ Update all related subcategories if categoryId or categoryName changed
+  let updatedSubcategories = null;
+  if (newCategoryId || newCategoryName) {
+    const updateSubcategoryData: any = {};
+    
+    if (newCategoryId) {
+      updateSubcategoryData.categoryId = newCategoryId;
+    }
+    if (newCategoryName) {
+      updateSubcategoryData.categoryName = newCategoryName;
+    }
+    
+    // Add updatedBy information for subcategories
+    updateSubcategoryData.updatedBy = {
+      id: admin_id,
+      role: admin_role,
+      email: admin_email,
+      updatedAt: new Date(),
+    };
+
+    // Update all subcategories that belong to this category
+    updatedSubcategories = await SubCategoryModel.updateMany(
+      { categoryId: oldCategoryId }, // Find by old categoryId
+      updateSubcategoryData
+    );
+  }
+
+  // 🧹 5️⃣ Return safe response
   const { __v, ...safeCategory } = oldCategory.toObject();
 
   // 🔑 Generate Access Token for admin
@@ -277,11 +331,15 @@ export const updateCategoryService = async (
   return {
     statusCode: httpStatus.ACCEPTED,
     success: true,
-    message: "category updated Successfully",
+    message: "Category updated successfully",
     error: null,
     data: {
       accessToken,
       category: safeCategory,
+      subcategoriesUpdated: updatedSubcategories ? {
+        matchedCount: updatedSubcategories.matchedCount,
+        modifiedCount: updatedSubcategories.modifiedCount
+      } : null,
       user: {
         id: admin_id,
         role: admin_role,
@@ -297,18 +355,13 @@ export const deleteCategoryService = async (
   admin_role: string,
   admin_email: string
 ) => {
-  // 🔒 Role-based access
-  if (admin_role !== "editor" && admin_role !== "superAdmin") {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "Access denied.");
-  }
-
   // 🧩 Verify admin exists
   const existingUser = await EmployerInfo.findOne({ email: admin_email });
   if (!existingUser) {
     throw new ApiError(httpStatus.NOT_FOUND, "Admin not found.");
   }
 
-  if (admin_role === "editor" && existingUser.isActive === false) {
+  if (existingUser.isActive === false) {
     throw new ApiError(httpStatus.UNAUTHORIZED, "Your account is deactivated.");
   }
 
@@ -350,6 +403,7 @@ export const deleteCategoryService = async (
     },
   };
 };
+//! next plane is to don't delete subcategory if category is deleted insted of that just move it to a reciale bin type category with displayed false
 //create sub category
 export const createSubCategoryService = async (
   data: z.infer<typeof createSubCategorySchema>,
@@ -357,24 +411,15 @@ export const createSubCategoryService = async (
   admin_role: string,
   admin_email: string
 ) => {
-  // 🔒 Role-based access control
-  if (admin_role !== "editor" && admin_role !== "superAdmin") {
-    throw new ApiError(
-      httpStatus.UNAUTHORIZED,
-      "You don't have access to create a subcategory"
-    );
-  }
-
-  const { subCategoryName, subCategoryId, categoryId } = data;
+  const { isDisplayed, subCategoryName, subCategoryId, categoryId } = data;
 
   // 🧩 1️⃣ Validate admin
-  const existingUser = await EmployerInfo.findOne({
-    email: admin_email,
-  }).select("-password");
+  const existingUser =
+    await EmployerInfo.findById(admin_id).select("-password");
   if (!existingUser) {
     throw new ApiError(httpStatus.NOT_FOUND, "Employee not found");
   }
-  if (admin_role === "editor" && existingUser.isActive === false) {
+  if (existingUser.isActive === false) {
     throw new ApiError(httpStatus.UNAUTHORIZED, "Your account is deactivated");
   }
 
@@ -392,10 +437,7 @@ export const createSubCategoryService = async (
 
   // 🧱 4️⃣ Create subcategory
   const newSubCategory = new SubCategoryModel({
-    subCategoryName,
-    subCategoryId,
-    categoryId,
-    categoryName,
+    ...data,
     createdBy: {
       id: admin_id,
       role: admin_role,
@@ -449,34 +491,40 @@ export const updateSubCategoryService = async (
   admin_role: string,
   admin_email: string
 ) => {
-  // 🔒 Role-based access
-  if (admin_role !== "editor" && admin_role !== "superAdmin") {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "Access denied.");
-  }
-
   // 🧩 Verify admin
-  const existingUser = await EmployerInfo.findOne({ email: admin_email });
+  const existingUser = await EmployerInfo.findById(admin_id);
   if (!existingUser) {
     throw new ApiError(httpStatus.NOT_FOUND, "Admin not found.");
   }
-  if (admin_role === "editor" && existingUser.isActive === false) {
+  if (existingUser.isActive === false) {
     throw new ApiError(httpStatus.UNAUTHORIZED, "Your account is deactivated.");
   }
 
   // 🧾 Extract data
-  const { subCategoryId, newSubCategoryId, subCategoryName, newCategoryId } = data;
+  const {
+    isDisplayed,
+    _id,
+    newSubCategoryId,
+    newSubCategoryName,
+    newCategoryId,
+  } = data;
 
   // 🔍 Find existing subcategory
-  const subCategory = await SubCategoryModel.findOne({ subCategoryId });
+  const subCategory = await SubCategoryModel.findById(_id);
   if (!subCategory) {
     throw new ApiError(httpStatus.NOT_FOUND, "Sub-category not found.");
   }
 
   // ✅ 1️⃣ If subCategoryId is changing, check uniqueness
-  if (newSubCategoryId) {
-    const duplicate = await SubCategoryModel.findOne({ subCategoryId: newSubCategoryId });
+  if (newSubCategoryId && newSubCategoryId !== subCategory.subCategoryId) {
+    const duplicate = await SubCategoryModel.findOne({
+      subCategoryId: newSubCategoryId,
+    });
     if (duplicate) {
-      throw new ApiError(httpStatus.CONFLICT, "New subCategoryId already exists.");
+      throw new ApiError(
+        httpStatus.CONFLICT,
+        "New subCategoryId already exists."
+      );
     }
     subCategory.subCategoryId = newSubCategoryId;
   }
@@ -511,8 +559,11 @@ export const updateSubCategoryService = async (
   }
 
   // ✅ 3️⃣ Update subCategoryName if provided
-  if (subCategoryName) {
-    subCategory.subCategoryName = subCategoryName;
+  if (newSubCategoryName) {
+    subCategory.subCategoryName = newSubCategoryName;
+  }
+  if (isDisplayed !== undefined) {
+    subCategory.isDisplayed = isDisplayed;
   }
 
   // ✅ 4️⃣ Update metadata
@@ -555,10 +606,10 @@ export const getSubCategoryService = async (
   const { subCategoryId, category } = data;
 
   let result;
-
+  const displayableFilter = { isDisplayed: true };
   // ✅ 1️⃣ If no subCategoryId → return all subcategories
   if (!subCategoryId) {
-    result = await SubCategoryModel.find().select(
+    result = await SubCategoryModel.find(displayableFilter).select(
       "-__v -createdBy -updatedBy -createdAt -updatedAt"
     );
   }
@@ -567,6 +618,7 @@ export const getSubCategoryService = async (
   else {
     const existingSubCategory = await SubCategoryModel.findOne({
       subCategoryId,
+      ...displayableFilter,
     }).select("-__v -createdBy -updatedBy -createdAt -updatedAt");
 
     if (!existingSubCategory) {
@@ -607,24 +659,19 @@ export const getSubCategoryForAdminService = async (
   admin_role: string,
   admin_email: string
 ) => {
-  // 🔒 Role-based access control
-  if (
-    admin_role !== "editor" &&
-    admin_role !== "superAdmin" &&
-    admin_role !== "subAdmin"
-  ) {
-    throw new ApiError(
-      httpStatus.UNAUTHORIZED,
-      "You don't have access to view full details of category"
-    );
-  }
-  const { subCategoryId, category } = data;
+  const { subCategoryId, category, isDisplayed } = data;
 
   let result;
-
+  let query: any = {};
+  // ➡️ Build dynamic filter based on provided fields
+  if (isDisplayed !== undefined) {
+    query.isDisplayed = isDisplayed;
+  }
+  // ➡️ Get the total count of categories (with filter if applied)
+  const totalSubCategoryCount = await SubCategoryModel.countDocuments(query);
   // ✅ 1️⃣ If subCategoryId not provided → return all categories
   if (!subCategoryId) {
-    result = await SubCategoryModel.find().select("-__v");
+    result = await SubCategoryModel.find(query).select("-__v");
   }
 
   // ✅ 2️⃣ If categoryId provided
@@ -658,6 +705,7 @@ export const getSubCategoryForAdminService = async (
     message: "Sub-category fetched for admin successfully",
     error: null,
     data: {
+      totalSubCategoryCount,
       result,
       user: {
         id: admin_id,
