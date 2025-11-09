@@ -12,6 +12,7 @@ import { template } from "./rootTemplate";
 import { globalRateLimiter } from "./middlewares/rateLimiter";
 import mongoSanitizer, { SanitizedRequest } from 'mongo-sanitizer';
 import { FRONTEND_URL } from "./config/envConfig";
+
 // Create an Express application
 const app: Application = express();
 //for global no sql injection prevent

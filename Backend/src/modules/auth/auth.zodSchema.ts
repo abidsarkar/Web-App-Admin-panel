@@ -10,7 +10,7 @@ export const passwordSchema = z
 export const loginSchema = z.object({
   email: z.string({ message: "Invalid email address!" }).trim().email(),
   password: passwordSchema,
-});
+}).strict();
 //export type LoginInput = z.infer<typeof loginSchema>["body"];
 export const emailSchema = z.object({
   email: z.string({ message: "Invalid email address!" }).trim().email(),

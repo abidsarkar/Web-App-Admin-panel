@@ -14,3 +14,8 @@ dist
 build
 logs
 *.log
+node_modules
+dist
+.git
+Dockerfile
+docker-compose.yml

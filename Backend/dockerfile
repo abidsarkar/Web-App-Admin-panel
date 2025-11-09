@@ -19,6 +19,8 @@ COPY . .
 # Create uploads directory if it doesn't exist
 RUN mkdir -p public/uploads/productCoverPicture
 RUN mkdir -p public/uploads/profile_pictures
+RUN mkdir -p public/uploads/productImages
+RUN mkdir -p public/uploads/customer_profile_picture
 
 # Expose the port your app runs on
 EXPOSE 5001
