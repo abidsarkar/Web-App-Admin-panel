@@ -194,12 +194,6 @@ export const getAllEmployeeInformationService = async (
   admin_role: string,
   admin_email: string
 ) => {
-  if (admin_role !== "superAdmin") {
-    throw new ApiError(
-      httpStatus.UNAUTHORIZED,
-      "You don't have access to view employee list"
-    );
-  }
   // 1️⃣ Find all employee who is not role:supperAdmin user by email with pagination
   const { page, limit, search, isActive, sort, order } = data;
   const query: any = {
@@ -210,6 +204,7 @@ export const getAllEmployeeInformationService = async (
     query.$or = [
       { name: { $regex: search, $options: "i" } },
       { email: { $regex: search, $options: "i" } },
+      { role: { $regex: search, $options: "i" } },
       { employer_id: { $regex: search, $options: "i" } },
     ];
   }
@@ -265,12 +260,6 @@ export const getAllSupAdminEmployeeInformationService = async (
   admin_role: string,
   admin_email: string
 ) => {
-  if (admin_role !== "superAdmin") {
-    throw new ApiError(
-      httpStatus.UNAUTHORIZED,
-      "You don't have access to view employee list"
-    );
-  }
   // 1️⃣ Find all employee who is not role:supperAdmin user by email with pagination
   const { page, limit, search, isActive, sort, order } = data;
   const query: any = {
@@ -334,80 +323,64 @@ export const updateEmployeeInformationService = async (
   admin_role: string,
   admin_email: string
 ) => {
-  if (admin_role !== "superAdmin") {
+  if (data.role === "superAdmin" && data.isActive === false) {
     throw new ApiError(
       httpStatus.UNAUTHORIZED,
-      "You don't have access to update a employee"
+      "You cannot deactivate a Super Admin"
     );
   }
 
-  if (data.role === "superAdmin" && data.isActive == false) {
-    throw new ApiError(
-      httpStatus.UNAUTHORIZED,
-      "You can not inactive a supper Admin"
-    );
-  }
+  const { _id, email, employer_id, password, ...updateData } = data;
 
-  // 🧹 Extract fields from data
-  const { email, employer_id, password, ...updateData } = data;
-
-  // 1️⃣ Find user by email or employer_id
-  const existingEmployee =
-    (await EmployerInfo.findOne({ email }).select("+password")) ||
-    (await EmployerInfo.findOne({ employer_id }).select("+password"));
-
+  const existingEmployee = await EmployerInfo.findById(_id).select("+password");
   if (!existingEmployee) {
     throw new ApiError(
       httpStatus.NOT_FOUND,
-      "User not found! Use a valid employee id or email."
+      "User not found! Invalid employee ID."
     );
   }
 
-  // Check if employer_id is being changed and if it already exists for another employee
-  if (employer_id && existingEmployee.employer_id !== employer_id) {
-    const existingEmployeeId = await EmployerInfo.findOne({
-      employer_id,
-      _id: { $ne: existingEmployee._id },
-    });
-    if (existingEmployeeId) {
+  // Email uniqueness
+  if (email && email !== existingEmployee.email) {
+    const existsEmail = await EmployerInfo.findOne({ email });
+    if (existsEmail) {
       throw new ApiError(
         httpStatus.CONFLICT,
-        "Employee id is already exist for other employee use unique one"
+        "Email is already in use by another employee."
       );
     }
   }
 
-  // 🔐 Hash password if provided
+  // Employer ID uniqueness
+  if (employer_id && employer_id !== existingEmployee.employer_id) {
+    const existsEmployerId = await EmployerInfo.findOne({ employer_id });
+    if (existsEmployerId) {
+      throw new ApiError(
+        httpStatus.CONFLICT,
+        "Employer ID is already in use by another employee."
+      );
+    }
+  }
+
+  // Hash password if provided
   let hashedPassword: string | undefined;
   if (password) {
     hashedPassword = await hashPassword(password);
   }
 
-  // 🚫 Prepare update payload
+  // Prepare payload
   const updatePayload: any = {
     ...updateData,
-    // Only include employer_id if it's provided and different
+    ...(email && { email }),
     ...(employer_id && { employer_id }),
-    // Only include hashed password if password was provided
     ...(password && { password: hashedPassword }),
-    // Keep the original email - don't allow it to be changed
-    email: existingEmployee.email,
-    // Update the updatedBy field - fix the structure
-    createdBy: {
-      ...existingEmployee.createdBy, // preserve existing createdBy data
-      updatedBy: admin_id,
-      updatedAt: new Date(),
-    },
   };
-  // Update the existing employee
+
   const updatedEmployee = await EmployerInfo.findByIdAndUpdate(
-    existingEmployee._id,
+    _id,
     updatePayload,
-    {
-      new: true, // return updated document
-      runValidators: true, // run schema validations
-    }
-  ).select("+password"); // Select password to handle the destructuring later
+    { new: true, runValidators: true }
+  );
 
   if (!updatedEmployee) {
     throw new ApiError(
@@ -415,8 +388,7 @@ export const updateEmployeeInformationService = async (
       "Failed to update employee information"
     );
   }
-  // Convert to plain JS object
-  // Remove sensitive fields
+
   const {
     password: userPassword,
     __v,
@@ -426,7 +398,7 @@ export const updateEmployeeInformationService = async (
     changePasswordExpiresAt,
     ...safeUser
   } = updatedEmployee.toObject();
-  // 🔑 Generate access token for admin (if needed)
+
   const accessToken = generateAccessToken({
     id: admin_id,
     role: admin_role,
@@ -449,6 +421,7 @@ export const updateEmployeeInformationService = async (
     },
   };
 };
+
 //! for later change superAdmin role is with otp
 //! for now superAdmin can not be inactive and can be change as subAdmin then change
 export const updateEmployeeProfilePicService = async (
@@ -458,19 +431,11 @@ export const updateEmployeeProfilePicService = async (
   admin_role: string,
   admin_email: string
 ) => {
-  if (admin_role !== "superAdmin") {
-    throw new ApiError(
-      httpStatus.UNAUTHORIZED,
-      "You don't have access to update an employee"
-    );
-  } //!though it is already forcefully stop in the route but i use
   if (!profilePictureData) throw new ApiError(400, "No file uploaded");
   // 🧹 Remove sensitive fields that shouldn't be updated
-  const { email, employer_id } = data;
+  const { _id, email, employer_id } = data;
   // 1️⃣ Find user by email
-  const existingEmployee =
-    (await EmployerInfo.findOne({ email }).select("+password")) ||
-    (await EmployerInfo.findOne({ employer_id }).select("+password"));
+  const existingEmployee = await EmployerInfo.findById(_id).select("-password");
 
   if (!existingEmployee) {
     throw new ApiError(
@@ -562,12 +527,7 @@ export const deleteEmployeeInformationService = async (
   admin_role: string,
   admin_email: string
 ) => {
-  if (admin_role !== "superAdmin") {
-    throw new ApiError(
-      httpStatus.UNAUTHORIZED,
-      "You don't have access to create new employee"
-    );
-  }
+  
   if (data.email === admin_email) {
     throw new ApiError(
       httpStatus.NOT_ACCEPTABLE,

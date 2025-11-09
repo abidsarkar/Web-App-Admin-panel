@@ -55,11 +55,12 @@ export const createEmployerSchema = z.object({
 });
 //update body part
 export const updateEmployerSchema = z.object({
+  _id: z.string().trim(),
   name: z
     .string()
     .max(50, { message: "name must be under 50 character" })
     .optional(),
-  email: z.string({ message: "email is required" }).trim().email(),
+  email: z.string({ message: "email is required" }).trim().email().optional(),
   phone: z
     .string()
     .max(18, {
@@ -103,10 +104,11 @@ export const updateEmployerSchema = z.object({
 });
 
 export const getEmployerInfoSchema = z.object({
+  _id:z.string().trim().optional(),
   email: z.string().trim().email().optional(),
   employer_id: z.string().trim().optional(),
 });
-
+//get all except super admin
 export const getAllEmployerInfoSchema = z.object({
   page: z
     .string()

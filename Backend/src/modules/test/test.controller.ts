@@ -8,7 +8,7 @@ import { sendAccessCookie, sendRefreshCookie } from '../auth/auth.utils';
 import z from 'zod';
 import { loginSchema } from './test.zodSchema';
 
-// export const deleteSubCategoryController = catchAsync(
+
 //   async (req: Request, res: Response) => {
 //     const parsed = deleteSubCategorySchema.safeParse(req.query);
 //     if (!parsed.success) {

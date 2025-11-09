@@ -17,26 +17,11 @@ export const createOrUpdateTextService = async (
   admin_role: string,
   admin_email: string
 ) => {
-  // 🔒 Role-based access control
-  if (admin_role !== "superAdmin") {
-    throw new ApiError(
-      httpStatus.UNAUTHORIZED,
-      "You don't have access to create new reusable text"
-    );
-  }
-  const existingUser = await EmployerInfo.findOne({email:admin_email});
+  
+  const existingUser = await EmployerInfo.findById(admin_id);
   if (!existingUser) {
     throw new ApiError(httpStatus.CONFLICT, "Use a valid super admin id");
   }
-
-  if (existingUser.role !== "superAdmin") {
-    throw new ApiError(
-      httpStatus.UNAUTHORIZED,
-      "You don't have access to create new reusable text"
-    );
-  }
- 
-
 
    // Use findOneAndUpdate with upsert
   const text = await TextModel.findOneAndUpdate(
@@ -51,7 +36,7 @@ export const createOrUpdateTextService = async (
           createdAt: new Date(),
         },
       },
-      updatedBy: {
+      lastUpdatedBy: {
         id: admin_id,
         role: admin_role,
         email: admin_email,
@@ -110,6 +95,22 @@ export const getTextService = async (fields?: string[]) => {
     message: fields?.length
       ? `Fetched selected fields: ${fields.join(", ")}`
       : "Fetched full text document",
+    error:null,
+    data: text,
+  };
+};
+export const getAllTextService = async (admin_id: string) => {
+  
+  const text = await TextModel.find().lean();
+
+  if (!text) {
+    throw new ApiError(httpStatus.NOT_FOUND, "No text document found");
+  }
+
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Fetched all text document",
     error:null,
     data: text,
   };

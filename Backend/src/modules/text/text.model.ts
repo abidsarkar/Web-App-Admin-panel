@@ -42,7 +42,6 @@ const textSchema = new Schema<IText>(
       trim: true,
       lowercase: true,
       default: "contactEmail",
-     
     },
 
     // Social Media Links Section
@@ -125,6 +124,12 @@ const textSchema = new Schema<IText>(
       type: String,
       trim: true,
       default: "disclaimer",
+    },
+    lastUpdatedBy: {
+      id: { type: String, trim: true },
+      role: { type: String, trim: true },
+      email: { type: String, trim: true },
+      updatedAt: { type: Date },
     },
   },
   {

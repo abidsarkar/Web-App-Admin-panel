@@ -1,3 +1,4 @@
+import { email } from 'zod';
 //change in working interface file
 import { Document } from "mongoose";
 
@@ -29,6 +30,12 @@ export interface IText extends Document {
   // restriction info
   shippingRestriction?: string;
   disclaimer?: string;
+  lastUpdatedBy?:{
+    id:string;
+    role:string;
+    email:string;
+    updatedAt:Date;
+  }
   createdAt?: Date;
   updatedAt?: Date;
 }
