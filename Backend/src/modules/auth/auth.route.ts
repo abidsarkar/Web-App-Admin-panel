@@ -9,9 +9,10 @@ import { roleCheckMiddlewareAdmins } from "../../middlewares/roleCheckMiddleware
 router.post("/login", loginRateLimiter,loginTracker,loginController);
 router.post("/forgot-password",forgotPasswordRateLimiter, forgotPasswordController);
 router.post("/verify-forgot-password-otp",verifyForgotPasswordTokenMiddleware, verifyForgotPasswordOTPController);
-router.post("/change-password", changePasswordController);
+router.post("/change-password",verifyForgotPasswordTokenMiddleware, changePasswordController);
 router.post("/resend-otp",otpResendRateLimiter, resendOTPController);
 router.post("/change-pass-from-profile",otpResendRateLimiter,verifyAccessTokenMiddleware,roleCheckMiddlewareAdmins("subAdmin","superAdmin","editor"), changePassword_fromProfileController);
 router.post("/logout", logoutController);
 router.post("/refresh-token", verifyRefreshTokenMiddleware,roleCheckMiddlewareAdmins("subAdmin","superAdmin","editor"),refreshTokenController);
 export const authRoutes = router;
+  

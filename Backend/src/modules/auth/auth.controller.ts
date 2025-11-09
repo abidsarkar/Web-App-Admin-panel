@@ -61,15 +61,26 @@ export const loginController = catchAsync(
 );
 export const forgotPasswordController = catchAsync(
   async (req: Request, res: Response) => {
-    const { email } = req.body;
-    const { forgotPasswordToken } = await forgotPasswordService(email);
-    sendForgotPasswordCookie(res, forgotPasswordToken);
+    const parsed = emailSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "forgot password Validation error",
+        errors: z.treeifyError(parsed.error),
+      });
+    }
+
+    const { statusCode, success, message, error, data } =
+      await forgotPasswordService(parsed.data);
+
+    sendForgotPasswordCookie(res, data?.forgotPasswordToken);
     sendResponse(res, {
-      statusCode: httpStatus.OK,
-      success: true,
-      message: "Forgot password otp send to your email successful",
+      statusCode,
+      success,
+      message,
+      error,
       data: {
-        forgotPasswordToken: forgotPasswordToken,
+        forgotPasswordToken: data?.forgotPasswordToken,
       },
     });
   }
@@ -85,16 +96,17 @@ export const verifyForgotPasswordOTPController = catchAsync(
         data: {},
       });
     }
+    const tokenEmail = req.user?.email;
     const { otp, email } = parsed.data;
-    const { statusCode, success, message, error, user } =
-      await verifyForgotPasswordOTPService(otp, email);
+    const { statusCode, success, message, error, data } =
+      await verifyForgotPasswordOTPService(otp, email, tokenEmail!);
     sendResponse(res, {
       statusCode,
       success,
       message,
       error,
       data: {
-        user,
+        forgotPasswordToken: data?.forgotPasswordToken,
       },
     });
   }
@@ -110,9 +122,10 @@ export const changePasswordController = catchAsync(
         data: {},
       });
     }
+    const tokenEmail = req.user?.email;
     const { email, password } = parsed.data;
     const { statusCode, success, message, error, data } =
-      await PasswordChangeService(password, email);
+      await PasswordChangeService(password, email,tokenEmail!);
     sendResponse(res, {
       statusCode,
       success,

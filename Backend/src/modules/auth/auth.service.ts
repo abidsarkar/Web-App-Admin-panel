@@ -13,7 +13,12 @@ import argon2 from "argon2";
 import ApiError from "../../errors/ApiError";
 import httpStatus from "http-status";
 import { JWT_SECRET_KEY } from "../../config/envConfig";
-import { changePasswordFromProfileSchema, emailSchema, loginSchema, otpSchema } from "./auth.zodSchema";
+import {
+  changePasswordFromProfileSchema,
+  emailSchema,
+  loginSchema,
+  otpSchema,
+} from "./auth.zodSchema";
 import {
   generateOTP,
   otpExpireTime,
@@ -47,17 +52,6 @@ export const loginService = async (data: z.infer<typeof loginSchema>) => {
   user.changePasswordExpiresAt = undefined;
   user.isForgotPasswordVerified = undefined;
   user.lastLoginAt = new Date();
-  await user.save();
-  const {
-    password: _,
-    __v,
-    otp,
-    otpExpiresAt,
-    changePasswordExpiresAt,
-    isForgotPasswordVerified,
-    ...safeUser
-  } = user.toObject();
-
   const accessToken = generateAccessToken({
     id: user._id,
     role: user.role,
@@ -69,6 +63,18 @@ export const loginService = async (data: z.infer<typeof loginSchema>) => {
     role: user.role,
     email: user.email,
   });
+  user.refreshToken = refreshToken;
+  await user.save();
+  const {
+    password: _,
+    __v,
+    otp,
+    otpExpiresAt,
+    changePasswordExpiresAt,
+    isForgotPasswordVerified,
+    refreshToken: __,
+    ...safeUser
+  } = user.toObject();
 
   return {
     statusCode: httpStatus.OK,
@@ -83,24 +89,10 @@ export const loginService = async (data: z.infer<typeof loginSchema>) => {
   };
 };
 // forgot password service
-export const forgotPasswordService = async (email: string) => {
-  //! check if email is valid using zod
-  //? check if email is valid using zod
-  //todo check if email is valid using zod
-  // * check if email is valid using zod
-
-  const parsed = emailSchema.safeParse({ email }); //passing as object
-  //return error if email is not valid formate
-  if (!parsed.success) {
-    throw new ApiError(
-      httpStatus.BAD_REQUEST,
-      "forgot password Validation error",
-      {
-        path: "body",
-        value: z.treeifyError(parsed.error),
-      }
-    );
-  }
+export const forgotPasswordService = async (
+  data: z.infer<typeof emailSchema>
+) => {
+  const { email } = data;
   // 2 Find user by email
   const user = await EmployerInfo.findOne({ email }).select("-password");
   if (!user) {
@@ -126,12 +118,28 @@ export const forgotPasswordService = async (email: string) => {
   const forgotPasswordToken = generateForgotPasswordToken({
     email: user.email,
   });
-  return { forgotPasswordToken };
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Loforgot password OTP send successfully",
+    error: null,
+    data: {
+      forgotPasswordToken,
+      user: user.email,
+    },
+  };
 };
 export const verifyForgotPasswordOTPService = async (
   otp: string,
-  email: string
+  email: string,
+  tokenEmail: string
 ) => {
+  if (email !== tokenEmail) {
+    throw new ApiError(
+      httpStatus.UNAUTHORIZED,
+      "You are not authorized to access"
+    );
+  }
   // 1 Find user by email
   const user = await EmployerInfo.findOne({ email }).select("+password");
   if (!user) {
@@ -154,19 +162,30 @@ export const verifyForgotPasswordOTPService = async (
   user.otp = undefined; // Clear the OTP after successful verification
   user.otpExpiresAt = undefined; // Clear the OTP expiration time
   await user.save();
-
+  const forgotPasswordToken = generateForgotPasswordToken({
+    email: user.email,
+  });
   return {
     statusCode: httpStatus.OK,
     success: true,
     message: "OTP verified successfully",
     error: null,
-    user: {},
+    data: {
+      forgotPasswordToken,
+    },
   };
 };
 export const PasswordChangeService = async (
   password: string,
-  email: string
+  email: string,
+  tokenEmail: string
 ) => {
+  if (email !== tokenEmail) {
+    throw new ApiError(
+      httpStatus.UNAUTHORIZED,
+      "You are not authorized to access"
+    );
+  }
   // 1 Find user by email
   const user = await EmployerInfo.findOne({ email });
   if (!user) {
@@ -247,16 +266,19 @@ export const resendOTPService = async (email: string) => {
 };
 //change password from profile as known the old password
 export const changePassword_FromProfileService = async (
- data: z.infer<typeof changePasswordFromProfileSchema>,
-   admin_id:string,
-   admin_role:string,
-   admin_email:string
+  data: z.infer<typeof changePasswordFromProfileSchema>,
+  admin_id: string,
+  admin_role: string,
+  admin_email: string
 ) => {
-  const { _id, newPassword,currentPassword } = data;
+  const { _id, newPassword, currentPassword } = data;
   //check if the user is same as logged in user
-    if(_id !==admin_id){
-      throw new ApiError(httpStatus.UNAUTHORIZED,"You are not authorized to change this password");
-    }
+  if (_id !== admin_id) {
+    throw new ApiError(
+      httpStatus.UNAUTHORIZED,
+      "You are not authorized to change this password"
+    );
+  }
   // 1 Find user by email
   const user = await EmployerInfo.findById(_id).select("+password");
   if (!user) {
@@ -267,10 +289,13 @@ export const changePassword_FromProfileService = async (
   if (!user.isActive) {
     throw new ApiError(httpStatus.FORBIDDEN, "User account is deactivated");
   }
-//3 compare current password
-  const isMatch = await argon2.verify(user.password,currentPassword);
-  if(!isMatch){
-    throw new ApiError(httpStatus.NOT_ACCEPTABLE,"Current password is incorrect");
+  //3 compare current password
+  const isMatch = await argon2.verify(user.password, currentPassword);
+  if (!isMatch) {
+    throw new ApiError(
+      httpStatus.NOT_ACCEPTABLE,
+      "Current password is incorrect"
+    );
   }
   const password = newPassword;
   const hashedPassword = await hashPassword(password);
@@ -306,6 +331,7 @@ export const refreshTokenService = async (refreshToken: string) => {
   //verify refresh token
   // Verify refresh token
   const decoded = jwt.verify(refreshToken, JWT_SECRET_KEY as string);
+  
   if (typeof decoded === "string" || !("id" in decoded)) {
     throw new ApiError(httpStatus.UNAUTHORIZED, "Invalid token payload");
   }
@@ -315,7 +341,16 @@ export const refreshTokenService = async (refreshToken: string) => {
     email: string;
     role: string;
   };
-
+  const _id = payload.id;
+  const userToken = await EmployerInfo.findById(_id).select(
+    "+refreshToken -password"
+  );
+  if (refreshToken !== userToken?.refreshToken) {
+    throw new ApiError(
+      httpStatus.UNAUTHORIZED,
+      "Invalid refresh token please login again"
+    );
+  }
   const accessToken = generateAccessToken({
     id: payload.id,
     role: payload.role,

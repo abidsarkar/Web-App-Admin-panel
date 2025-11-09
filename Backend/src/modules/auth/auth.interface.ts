@@ -33,6 +33,7 @@ export interface IEmployer extends Document {
     updatedBy:string;
     updatedAt:Date;
   };
+  refreshToken:string;
   createdAt: Date;
   updatedAt: Date;
 

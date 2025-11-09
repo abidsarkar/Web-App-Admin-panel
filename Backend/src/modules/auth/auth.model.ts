@@ -31,7 +31,8 @@ const employerInformationSchema = new Schema<IEmployer>(
     profilePicture: {
       filePathURL: {
         type: String,
-        default: "/public/uploads/profile_pictures/defaultProfilePictureAADD.png",
+        default:
+          "/public/uploads/profile_pictures/defaultProfilePictureAADD.png",
         required: false,
       },
       fileOriginalName: {
@@ -55,7 +56,7 @@ const employerInformationSchema = new Schema<IEmployer>(
     },
     role: {
       type: String,
-      enum: ["subAdmin", "superAdmin","editor", "undefined"],
+      enum: ["subAdmin", "superAdmin", "editor", "undefined"],
       default: "undefined",
     },
     password: {
@@ -92,10 +93,9 @@ const employerInformationSchema = new Schema<IEmployer>(
       updatedBy: { type: String },
       updatedAt: { type: Date },
     },
+    refreshToken: { type: String, select: false },
   },
-  { timestamps: true,
-    versionKey:false
-   }
+  { timestamps: true, versionKey: false }
 );
 
 export const EmployerInfo = mongoose.model<IEmployer>(
