@@ -1,3 +1,4 @@
+import ExcelJs from "exceljs";
 import argon2 from "argon2";
 import httpStatus from "http-status";
 import ApiError from "../../errors/ApiError";
@@ -768,6 +769,147 @@ export const deleteSubCategoryService = async (
     data: {
       accessToken,
       deletedSubCategoryId: subCategoryId,
+      user: {
+        id: admin_id,
+        role: admin_role,
+        email: admin_email,
+      },
+    },
+  };
+};
+export const exportCategoriesAndSubcategoriesService = async (
+  admin_id: string,
+  admin_role: string,
+  admin_email: string
+) => {
+  // Fetch categories and subcategories
+  const categories = await CategoryModel.find().lean();
+  const subcategories = await SubCategoryModel.find().lean();
+
+  if (!categories.length && !subcategories.length) {
+    throw new ApiError(httpStatus.NOT_FOUND, "No categories or subcategories found");
+  }
+
+  // Create workbook
+  const workbook = new ExcelJs.Workbook();
+
+  // ===== CATEGORIES WORKSHEET =====
+  const categoriesWorksheet = workbook.addWorksheet("Categories");
+
+  // Define columns for categories
+  categoriesWorksheet.columns = [
+    { header: "_id", key: "_id", width: 25 },
+    { header: "Category ID", key: "categoryId", width: 20 },
+    { header: "Category Name", key: "categoryName", width: 30 },
+    { header: "Display Status", key: "isDisplayed", width: 15 },
+    { header: "Sub Categories Count", key: "subCategoriesCount", width: 20 },
+    { header: "Created By", key: "createdBy_email", width: 25 },
+    { header: "Updated By", key: "updatedBy_email", width: 25 },
+    { header: "Created Date", key: "createdAt", width: 20 },
+    { header: "Updated Date", key: "updatedAt", width: 20 },
+  ];
+
+  // Add data rows for categories
+  categories.forEach((category) => {
+    categoriesWorksheet.addRow({
+      _id: category._id?.toString() || "N/A",
+      categoryId: category.categoryId || "N/A",
+      categoryName: category.categoryName || "N/A",
+      isDisplayed: category.isDisplayed ? "Yes" : "No",
+      subCategoriesCount: category.subCategories?.length || 0,
+      createdBy_email: category.createdBy?.email || "N/A",
+      updatedBy_email: category.updatedBy?.email || "N/A",
+      createdAt: category.createdAt
+        ? new Date(category.createdAt).toLocaleString()
+        : "N/A",
+      updatedAt: category.updatedAt
+        ? new Date(category.updatedAt).toLocaleString()
+        : "N/A",
+    });
+  });
+
+  // Style categories header row
+  categoriesWorksheet.getRow(1).font = { bold: true };
+  categoriesWorksheet.getRow(1).fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FFE6F3FF" }, // Light blue background
+  };
+
+  // Auto-fit categories columns
+  categoriesWorksheet.columns.forEach(column => {
+    if (column.width) {
+      column.width = Math.max(column.width, 12);
+    }
+  });
+
+  // ===== SUBCATEGORIES WORKSHEET =====
+  const subcategoriesWorksheet = workbook.addWorksheet("SubCategories");
+
+  // Define columns for subcategories
+  subcategoriesWorksheet.columns = [
+    { header: "_id", key: "_id", width: 25 },
+    { header: "Sub Category ID", key: "subCategoryId", width: 20 },
+    { header: "Sub Category Name", key: "subCategoryName", width: 30 },
+    { header: "Category ID", key: "categoryId", width: 20 },
+    { header: "Category Name", key: "categoryName", width: 30 },
+    { header: "Display Status", key: "isDisplayed", width: 15 },
+    { header: "Created By", key: "createdBy_email", width: 25 },
+    { header: "Updated By", key: "updatedBy_email", width: 25 },
+    
+  ];
+
+  // Add data rows for subcategories
+  subcategories.forEach((subcategory) => {
+    subcategoriesWorksheet.addRow({
+      _id: subcategory._id?.toString() || "N/A",
+      subCategoryId: subcategory.subCategoryId || "N/A",
+      subCategoryName: subcategory.subCategoryName || "N/A",
+      categoryId: subcategory.categoryId || "N/A",
+      categoryName: subcategory.categoryName || "N/A",
+      isDisplayed: subcategory.isDisplayed ? "Yes" : "No",
+      createdBy_email: subcategory.createdBy?.email || "N/A",
+      updatedBy_email: subcategory.updatedBy?.email || "N/A",
+     
+    });
+  });
+
+  // Style subcategories header row
+  subcategoriesWorksheet.getRow(1).font = { bold: true };
+  subcategoriesWorksheet.getRow(1).fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FFF0E6F3" }, // Light purple background
+  };
+
+  // Auto-fit subcategories columns
+  subcategoriesWorksheet.columns.forEach(column => {
+    if (column.width) {
+      column.width = Math.max(column.width, 12);
+    }
+  });
+
+  // Generate buffer
+  const buffer = await workbook.xlsx.writeBuffer();
+  const accessToken = generateAccessToken({
+    id: admin_id,
+    role: admin_role,
+    email: admin_email,
+  });
+
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Categories and subcategories exported successfully",
+    error: null,
+    data: {
+      accessToken,
+      buffer: Buffer.from(buffer),
+      fileName: `categories_export_${Date.now()}.xlsx`,
+      counts: {
+        categories: categories.length,
+        subcategories: subcategories.length
+      },
       user: {
         id: admin_id,
         role: admin_role,

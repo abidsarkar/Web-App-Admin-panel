@@ -20,6 +20,7 @@ import {
   deactivateCustomerProfileController_Admin,
     deleteCustomerProfileController,
   deleteCustomerProfileController_admin,
+  exportAllCustomersController,
   getAllCustomerInfoController,
   getProfileManagedCustomerController,
   getProfileManagedCustomerController_Admin,
@@ -82,5 +83,11 @@ router.delete(
   verifyAccessTokenMiddleware,
   roleCheckMiddlewareAdmins("superAdmin","editor"),
   deleteCustomerProfileController_admin
+);
+router.get(
+  "/export",
+  verifyAccessTokenMiddleware,
+  adminRoleCheckMiddleware("superAdmin"),
+  exportAllCustomersController
 );
 export const customerManagementRouts = router;

@@ -1,3 +1,4 @@
+import  ExcelJs  from 'exceljs';
 import fs from "fs";
 import z from "zod";
 import argon2 from "argon2";
@@ -563,6 +564,126 @@ export const deleteEmployeeInformationService = async (
     error: null,
     data: {
       accessToken,
+      user: {
+        id: admin_id,
+        role: admin_role,
+        email: admin_email,
+      },
+    },
+  };
+};
+//!export to excel 
+export const exportAllEmployeesToExcelService = async (
+  admin_id: string,
+  admin_role: string,
+  admin_email: string
+) => {
+  
+
+  // Verify admin exists and is active
+  const existingUser = await EmployerInfo.findOne({ email: admin_email });
+  if (!existingUser) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Admin not found.");
+  }
+
+  if (!existingUser.isActive) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Your account is deactivated.");
+  }
+
+  // Fetch employees excluding sensitive fields
+  const employees = await EmployerInfo.find()
+    .select("-password -refreshToken -otp -otpExpiresAt -changePasswordExpiresAt")
+    .lean();
+
+  if (!employees.length) {
+    throw new ApiError(httpStatus.NOT_FOUND, "No employees found");
+  }
+
+  // Create workbook and worksheet
+  const workbook = new ExcelJs.Workbook();
+  const worksheet = workbook.addWorksheet("Employees");
+
+  // Define columns
+  worksheet.columns = [
+    { header: "_id", key: "_id", width: 25 },
+    { header: "Employer ID", key: "employer_id", width: 20 },
+    { header: "Name", key: "name", width: 25 },
+    { header: "Email", key: "email", width: 30 },
+    { header: "Phone", key: "phone", width: 15 },
+    { header: "Secondary Phone", key: "secondaryPhoneNumber", width: 15 },
+    { header: "Address", key: "address", width: 30 },
+    { header: "Position", key: "position", width: 20 },
+    { header: "Role", key: "role", width: 15 },
+    { header: "Active Status", key: "isActive", width: 15 },
+    { header: "Last Login", key: "lastLoginAt", width: 20 },
+    { header: "Profile Picture URL", key: "profilePicture_filePathURL", width: 40 },
+    { header: "Forgot Password Verified", key: "isForgotPasswordVerified", width: 20 },
+    { header: "Created By", key: "createdBy_email", width: 25 },
+    { header: "Created At", key: "createdAt", width: 20 },
+    { header: "Updated At", key: "updatedAt", width: 20 },
+  ];
+
+  // Add data rows
+  employees.forEach((employee) => {
+    worksheet.addRow({
+      _id: employee._id?.toString() || "N/A",
+      employer_id: employee.employer_id || "N/A",
+      name: employee.name || "N/A",
+      email: employee.email || "N/A",
+      phone: employee.phone || "N/A",
+      secondaryPhoneNumber: employee.secondaryPhoneNumber || "N/A",
+      address: employee.address || "N/A",
+      position: employee.position || "N/A",
+      role: employee.role || "N/A",
+      isActive: employee.isActive ? "Active" : "Inactive",
+      lastLoginAt: employee.lastLoginAt 
+        ? new Date(employee.lastLoginAt).toLocaleString() 
+        : "Never",
+      profilePicture_filePathURL: employee.profilePicture?.filePathURL || "N/A",
+      isForgotPasswordVerified: employee.isForgotPasswordVerified ? "Yes" : "No",
+      createdBy_email: employee.createdBy?.email || "N/A",
+      createdAt: employee.createdAt
+        ? new Date(employee.createdAt).toLocaleString()
+        : "N/A",
+      updatedAt: employee.updatedAt
+        ? new Date(employee.updatedAt).toLocaleString()
+        : "N/A",
+    });
+  });
+
+  // Style header row
+  worksheet.getRow(1).font = { bold: true };
+  worksheet.getRow(1).fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FFE6F3FF" }, // Light blue background
+  };
+
+  // Auto-fit columns for better readability
+  worksheet.columns.forEach(column => {
+    if (column.width) {
+      column.width = Math.max(column.width, 12);
+    }
+  });
+
+  // Generate buffer
+  const buffer = await workbook.xlsx.writeBuffer();
+  const accessToken = generateAccessToken({
+    id: admin_id,
+    role: admin_role,
+    email: admin_email,
+  });
+
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Employees exported successfully",
+    error: null,
+    data: {
+      accessToken,
+      buffer: Buffer.from(buffer),
+      fileName: `employees_export_${Date.now()}.xlsx`,
+      count: employees.length,
       user: {
         id: admin_id,
         role: admin_role,

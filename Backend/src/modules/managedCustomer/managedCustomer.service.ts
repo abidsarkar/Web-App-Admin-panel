@@ -1,4 +1,5 @@
 import fs from "fs";
+import ExcelJs from "exceljs";
 import z, { email, size } from "zod";
 import {
   generateAccessToken,
@@ -539,6 +540,118 @@ export const deleteCustomerProfileService_admin = async (
         role:admin_role,
         email:admin_email
       }
+    },
+  };
+};
+//!excel
+export const exportAllCustomersService = async (
+  admin_id: string,
+  admin_role: string,
+  admin_email: string
+) => {
+  // Fetch customers excluding sensitive fields and deleted accounts
+  const customers = await customerInfoModel.find({ isDeleted: false })
+    .select("-password -refreshToken -otp -otpExpiresAt -changePasswordExpiresAt -deletedAt")
+    .lean();
+
+  if (!customers.length) {
+    throw new ApiError(httpStatus.NOT_FOUND, "No customers found");
+  }
+
+  // Create workbook and worksheet
+  const workbook = new ExcelJs.Workbook();
+  const worksheet = workbook.addWorksheet("Customers");
+
+  // Define columns
+  worksheet.columns = [
+    { header: "_id", key: "_id", width: 25 },
+    { header: "First Name", key: "firstName", width: 20 },
+    { header: "Last Name", key: "lastName", width: 20 },
+    { header: "Email", key: "email", width: 30 },
+    { header: "Phone", key: "phone", width: 15 },
+    { header: "Secondary Phone", key: "secondaryPhoneNumber", width: 15 },
+    { header: "Division", key: "address_division", width: 15 },
+    { header: "District", key: "address_district", width: 15 },
+    { header: "Upazila", key: "address_upazila", width: 15 },
+    { header: "Address Details", key: "address_village_road_house_flat", width: 30 },
+    { header: "Role", key: "role", width: 15 },
+    { header: "Active Status", key: "isActive", width: 15 },
+    { header: "Forgot Password Verified", key: "isForgotPasswordVerified", width: 20 },
+    { header: "Last Login", key: "lastLogin", width: 20 },
+    { header: "Profile Picture URL", key: "profilePicture_filePathURL", width: 40 },
+    { header: "Profile Picture Size", key: "profilePicture_size", width: 20 },
+    { header: "Created Date", key: "createdAt", width: 20 },
+    { header: "Updated Date", key: "updatedAt", width: 20 },
+  ];
+
+  // Add data rows
+  customers.forEach((customer) => {
+    worksheet.addRow({
+      _id: customer._id?.toString() || "N/A",
+      firstName: customer.firstName || "N/A",
+      lastName: customer.lastName || "N/A",
+      email: customer.email || "N/A",
+      phone: customer.phone || "N/A",
+      secondaryPhoneNumber: customer.secondaryPhoneNumber || "N/A",
+      address_division: customer.address?.division || "N/A",
+      address_district: customer.address?.district || "N/A",
+      address_upazila: customer.address?.upazila || "N/A",
+      address_village_road_house_flat: customer.address?.village_road_house_flat || "N/A",
+      role: customer.role || "N/A",
+      isActive: customer.isActive ? "Active" : "Inactive",
+      isForgotPasswordVerified: customer.isForgotPasswordVerified ? "Yes" : "No",
+      lastLogin: customer.lastLogin 
+        ? new Date(customer.lastLogin).toLocaleString() 
+        : "Never",
+      profilePicture_filePathURL: customer.profilePicture?.filePathURL || "N/A",
+      profilePicture_size: customer.profilePicture?.size || "N/A",
+      createdAt: customer.createdAt
+        ? new Date(customer.createdAt).toLocaleString()
+        : "N/A",
+      updatedAt: customer.updatedAt
+        ? new Date(customer.updatedAt).toLocaleString()
+        : "N/A",
+    });
+  });
+
+  // Style header row
+  worksheet.getRow(1).font = { bold: true };
+  worksheet.getRow(1).fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FFE6F9E6" }, // Light green background
+  };
+
+  // Auto-fit columns for better readability
+  worksheet.columns.forEach(column => {
+    if (column.width) {
+      column.width = Math.max(column.width, 12);
+    }
+  });
+
+  // Generate buffer
+  const buffer = await workbook.xlsx.writeBuffer();
+  const accessToken = generateAccessToken({
+    id: admin_id,
+    role: admin_role,
+    email: admin_email,
+  });
+
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Customers exported successfully",
+    error: null,
+    data: {
+      accessToken,
+      buffer: Buffer.from(buffer),
+      fileName: `customers_export_${Date.now()}.xlsx`,
+      count: customers.length,
+      user: {
+        id: admin_id,
+        role: admin_role,
+        email: admin_email,
+      },
     },
   };
 };

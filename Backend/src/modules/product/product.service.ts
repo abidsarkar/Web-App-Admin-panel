@@ -917,83 +917,50 @@ export const exportAllProductsToExcelService = async (
   admin_role: string,
   admin_email: string
 ) => {
-  if (
-    admin_role !== "editor" &&
-    admin_role !== "superAdmin" &&
-    admin_role !== "subAdmin"
-  ) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "Access denied");
-  }
-  // 🧩 Verify admin exists
-  const existingUser = await EmployerInfo.findOne({ email: admin_email });
-  if (!existingUser) {
-    throw new ApiError(httpStatus.NOT_FOUND, "Admin not found.");
-  }
-
-  if (admin_role === "editor" && existingUser.isActive === false) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, "Your account is deactivated.");
-  }
-
   const products = await ProductModel.find()
     .select(" -productImages -createdBy -updatedBy")
     .lean();
+    
   if (!products.length) {
-    throw new ApiError(httpStatus.NOT_FOUND, "No product found");
+    throw new ApiError(httpStatus.NOT_FOUND, "No products found");
   }
+
   // Create workbook and worksheet
   const workbook = new ExcelJs.Workbook();
   const worksheet = workbook.addWorksheet("Products");
-  // Define columns
+
+  // Define columns with better widths
   worksheet.columns = [
-    { header: "_id", key: "_id", width: 20 },
+    { header: "_id", key: "_id", width: 25 },
     { header: "Product ID", key: "productId", width: 20 },
     { header: "Product Name", key: "productName", width: 30 },
-    { header: "product Description", key: "productDescription", width: 30 },
-    { header: "size", key: "productSize", width: 20 },
-    { header: "color", key: "productColor", width: 20 },
-    { header: "color code", key: "productColorCode", width: 20 },
+    { header: "Product Description", key: "productDescription", width: 40 },
+    { header: "Size", key: "productSize", width: 15 },
+    { header: "Color", key: "productColor", width: 15 },
+    { header: "Color Code", key: "productColorCode", width: 15 },
     { header: "Price", key: "productPrice", width: 15 },
-    { header: "Stock", key: "productStock", width: 10 },
-    { header: "product Category Id", key: "productCategoryId", width: 10 },
-    {
-      header: "product Sub CategoryId",
-      key: "productSubCategoryId",
-      width: 10,
-    },
-    { header: "category Name", key: "categoryName", width: 12 },
-    { header: "subCategory Name", key: "subCategoryName", width: 12 },
-    {
-      header: "product Delivery Option",
-      key: "productDeliveryOption",
-      width: 30,
-    },
-    {
-      header: "product Payment Option",
-      key: "productPaymentOption",
-      width: 12,
-    },
-    { header: "Saleable", key: "isSaleable", width: 12 },
-    { header: "Displayable", key: "isDisplayable", width: 12 },
-    { header: "extra Comment", key: "extraComment", width: 12 },
-    { header: "cover image id", key: "productCoverImage_id", width: 20 },
-    {
-      header: "cover image filePath",
-      key: "productCoverImage_filePathURL",
-      width: 20,
-    },
-    {
-      header: "cover image size",
-      key: "productCoverImage_size",
-      width: 20,
-    },
+    { header: "Stock", key: "productStock", width: 15 },
+    { header: "Category ID", key: "productCategoryId", width: 20 },
+    { header: "Sub Category ID", key: "productSubCategoryId", width: 20 },
+    { header: "Category Name", key: "categoryName", width: 20 },
+    { header: "Sub Category Name", key: "subCategoryName", width: 20 },
+    { header: "Delivery Option", key: "productDeliveryOption", width: 25 },
+    { header: "Payment Option", key: "productPaymentOption", width: 20 },
+    { header: "Saleable", key: "isSaleable", width: 15 },
+    { header: "Displayable", key: "isDisplayable", width: 15 },
+    { header: "Search Keyword", key: "searchKeyword", width: 20 },
+    { header: "Extra Comment", key: "extraComment", width: 30 },
+    { header: "Cover Image ID", key: "productCoverImage_id", width: 25 },
+    { header: "Cover Image Path", key: "productCoverImage_filePathURL", width: 40 },
+    { header: "Cover Image Size", key: "productCoverImage_size", width: 20 },
     { header: "Created Date", key: "createdAt", width: 20 },
-    { header: "Created By", key: "createdBy", width: 20 },
-    { header: "Updated By", key: "updatedBy", width: 20 },
+    { header: "Updated Date", key: "updatedAt", width: 20 },
   ];
+
   // Add data rows
   products.forEach((product) => {
     worksheet.addRow({
-      _id: product._id || "N/A",
+      _id: product._id?.toString() || "N/A",
       productId: product.productId || "N/A",
       productName: product.productName || "N/A",
       productDescription: product.productDescription || "N/A",
@@ -1010,15 +977,17 @@ export const exportAllProductsToExcelService = async (
       productPaymentOption: product.productPaymentOption || "N/A",
       isSaleable: product.isSaleable ? "Yes" : "No",
       isDisplayable: product.isDisplayable ? "Yes" : "No",
+      searchKeyword: product.searchKeyword || "N/A",
       extraComment: product.extraComment || "N/A",
+      productCoverImage_id: product.productCoverImage?._id || "N/A",
+      productCoverImage_filePathURL: product.productCoverImage?.filePathURL || "N/A",
+      productCoverImage_size: product.productCoverImage?.size || "N/A",
       createdAt: product.createdAt
-        ? new Date(product.createdAt).toLocaleDateString()
+        ? new Date(product.createdAt).toLocaleString()
         : "N/A",
-      productCoverImage_id: product.productCoverImage?._id|| "N/A",
-      productCoverImage_filePathURL: product.productCoverImage?.filePathURL|| "N/A",
-      productCoverImage_size: product.productCoverImage?.size|| "N/A",
-      createdBy: product.createdBy?.email|| "N/A",
-      updatedBy: product.updatedBy?.email|| "N/A",
+      updatedAt: product.updatedAt
+        ? new Date(product.updatedAt).toLocaleString()
+        : "N/A",
     });
   });
 
@@ -1027,8 +996,15 @@ export const exportAllProductsToExcelService = async (
   worksheet.getRow(1).fill = {
     type: "pattern",
     pattern: "solid",
-    fgColor: { argb: "FFE6E6FA" },
+    fgColor: { argb: "FFE6E6FA" }, // Light purple background
   };
+
+  // Auto-fit columns for better readability
+  worksheet.columns.forEach(column => {
+    if (column.width) {
+      column.width = Math.max(column.width, 12);
+    }
+  });
 
   // Generate buffer
   const buffer = await workbook.xlsx.writeBuffer();
@@ -1045,7 +1021,7 @@ export const exportAllProductsToExcelService = async (
     error: null,
     data: {
       accessToken,
-      buffer: Buffer.from(buffer), // Ensure it's a proper Buffer
+      buffer: Buffer.from(buffer),
       fileName: `products_export_${Date.now()}.xlsx`,
       count: products.length,
       user: {

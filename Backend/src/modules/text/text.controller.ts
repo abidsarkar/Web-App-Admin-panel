@@ -6,7 +6,7 @@ import ApiError from "../../errors/ApiError";
 import { sendAccessCookie, sendRefreshCookie } from "../auth/auth.utils";
 import z from "zod";
 import { createTextSchema } from "./text.zodSchema";
-import { createOrUpdateTextService, getAllTextService, getTextService } from "./text.service";
+import { createOrUpdateTextService, exportAllTextContentService, getAllTextService, getTextService } from "./text.service";
 
 export const createOrUpdateTextController = catchAsync(
   async (req: Request, res: Response) => {
@@ -85,5 +85,44 @@ export const getAllTextController = catchAsync(
       error,
       data,
     });
+  }
+);
+export const exportAllTextContentController = catchAsync(
+  async (req: Request, res: Response) => {
+    const { statusCode, success, message, error, data } =
+      await exportAllTextContentService(
+        req.user!.id,
+        req.user!.role,
+        req.user!.email
+      );
+
+    // If there's an error, send normal JSON response
+    if (!success || error) {
+      sendAccessCookie(res, data?.accessToken);
+      return sendResponse(res, {
+        statusCode,
+        success,
+        message,
+        error,
+        data: {
+          accessToken: data?.accessToken,
+          user: data?.user,
+        },
+      });
+    }
+
+    // Ensure buffer is properly typed
+    const fileBuffer = Buffer.isBuffer(data.buffer) ? data.buffer : Buffer.from(data.buffer);
+
+    // Set headers for file download
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=${data.fileName}`);
+    res.setHeader('Content-Length', fileBuffer.length);
+
+    // Send access token in cookie
+    sendAccessCookie(res, data.accessToken);
+
+    // Send the file buffer - this ends the response
+    res.send(fileBuffer);
   }
 );

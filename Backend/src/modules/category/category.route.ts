@@ -11,6 +11,7 @@ import {
   createSubCategoryController,
   deleteCategoryController,
   deleteSubCategoryController,
+  exportCategoriesController,
   getCategoryController,
   getCategoryForAdminController,
   getSubCategoryController,
@@ -22,6 +23,7 @@ import {
   roleCheckMiddleware,
   roleCheckMiddlewareAdmins,
 } from "../../middlewares/roleCheckMiddleware";
+import { adminRoleCheckMiddleware } from "../../middlewares/roleGuard";
 //category
 router.post(
   "/create",
@@ -82,5 +84,10 @@ router.delete(
   verifyAccessTokenMiddleware,
   deleteSubCategoryController
 );
-
+router.get(
+  "/export",
+  verifyAccessTokenMiddleware,
+  adminRoleCheckMiddleware("superAdmin"),
+  exportCategoriesController
+);
 export const categoryRouts = router;

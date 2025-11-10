@@ -13,6 +13,7 @@ import {
 import {
   createEmployerController,
   deleteEmployerInfoController,
+  exportAllEmployeesController,
   getAllEmployerInfoController,
   getAllSupAdminEmployerInfoController,
   getEmployerInfoController,
@@ -62,5 +63,11 @@ router.delete(
   adminRoleCheckMiddleware("superAdmin"),
   verifyAccessTokenMiddleware,
   deleteEmployerInfoController
+);
+router.get(
+  "/export-employees",
+  adminRoleCheckMiddleware("superAdmin"),
+  verifyAccessTokenMiddleware, 
+  exportAllEmployeesController
 );
 export const employeeManagementRouts = router;

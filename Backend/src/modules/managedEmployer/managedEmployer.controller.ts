@@ -17,6 +17,7 @@ import {
 import {
   createEmployerService,
   deleteEmployeeInformationService,
+  exportAllEmployeesToExcelService,
   getAllEmployeeInformationService,
   getAllSupAdminEmployeeInformationService,
   getEmployeeInformationService,
@@ -291,5 +292,44 @@ export const deleteEmployerInfoController = catchAsync(
         user: data?.user,
       },
     });
+  }
+);
+export const exportAllEmployeesController = catchAsync(
+  async (req: Request, res: Response) => {
+    const { statusCode, success, message, error, data } =
+      await exportAllEmployeesToExcelService(
+        req.user!.id,
+        req.user!.role,
+        req.user!.email
+      );
+
+    // If there's an error, send normal JSON response
+    if (!success || error) {
+      sendAccessCookie(res, data?.accessToken);
+      return sendResponse(res, {
+        statusCode,
+        success,
+        message,
+        error,
+        data: {
+          accessToken: data?.accessToken,
+          user: data?.user,
+        },
+      });
+    }
+
+    // Ensure buffer is properly typed
+    const fileBuffer = Buffer.isBuffer(data.buffer) ? data.buffer : Buffer.from(data.buffer);
+
+    // Set headers for file download
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=${data.fileName}`);
+    res.setHeader('Content-Length', fileBuffer.length);
+
+    // Send access token in cookie
+    sendAccessCookie(res, data.accessToken);
+
+    // Send the file buffer - this ends the response
+    res.send(fileBuffer);
   }
 );
