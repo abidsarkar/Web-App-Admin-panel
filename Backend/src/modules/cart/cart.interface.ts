@@ -5,9 +5,9 @@ export interface ICartItem {
   productId: string;
   productObjectId: Types.ObjectId;
   productName: string;
-  pricePerUnit: number; // Current price at time of viewing
+  pricePerUnit: number;
   quantity: number;
-  totalPrice: number; // pricePerUnit * quantity
+  totalPrice: number;
   productImage?: string;
   productStock: number;
   isAvailable: boolean;
@@ -17,8 +17,8 @@ export interface ICartItem {
 }
 
 export interface ICart extends Document {
-  userId?: Types.ObjectId; // For logged-in users
-  sessionId?: string; // For guest users
+  userId?: Types.ObjectId;
+  sessionId?: string;
   items: ICartItem[];
   cartTotal: number;
   totalItems: number;
