@@ -1,9 +1,11 @@
+//src/server.ts
 import { createServer, Server as HttpServer } from "http";
 import mongoose from "mongoose";
 import app from "./app"; // Your Express app
 import { PORT, DATABASE_URL } from "./config/envConfig";
 import seedSuperAdmin from "./DB/index";
 import { scheduleCustomerCleanupJob } from "./cornJobs/customerCleanup.corn";
+import { redisConnection } from "./config/redisConfig"; // Add this import
 
 let server: HttpServer;
 
@@ -35,6 +37,33 @@ async function connectDB() {
   }
 }
 
+async function connectRedis() {
+  const redisStartTime = Date.now();
+  const loadingFrames = ["🔴", "🟡", "🟢"];
+  let frameIndex = 0;
+
+  // Loader animation for Redis
+  const loader = setInterval(() => {
+    process.stdout.write(
+      `\rRedis connecting ${loadingFrames[frameIndex]} Please wait 😢`
+    );
+    frameIndex = (frameIndex + 1) % loadingFrames.length;
+  }, 300);
+
+  try {
+    await redisConnection.connect();
+    clearInterval(loader);
+    console.log(
+      `\r✅ Redis connected successfully in ${Date.now() - redisStartTime}ms`
+    );
+  } catch (err: any) {
+    clearInterval(loader);
+    console.error("❌ Redis connection failed:", err.message);
+    // Don't exit process for Redis failure - app can work without cache
+    console.log("⚠️  Continuing without Redis cache...");
+  }
+}
+
 function initializeCronJobs() {
   try {
     scheduleCustomerCleanupJob();
@@ -45,12 +74,14 @@ function initializeCronJobs() {
 }
 
 async function startServer() {
+  // Connect to databases
   await connectDB();
+  await connectRedis(); // Add Redis connection
   
   //! 🦸 Seed Super Admin
   //await seedSuperAdmin();
   
-  // Initialize cron jobs after DB connection
+  // Initialize cron jobs after DB connections
   initializeCronJobs();
   
   // Start HTTP server
@@ -64,6 +95,7 @@ async function startServer() {
       }ms to start`
     );
     console.log(`⏰ Customer cleanup cron job is scheduled`);
+    console.log(`📊 Redis status: ${redisConnection.isReady() ? '✅ Connected' : '❌ Disconnected'}`);
   });
 }
 
@@ -98,20 +130,28 @@ process.on("uncaughtException", (error) => {
 });
 
 // Graceful Shutdown (for Docker, PM2, etc.)
-process.on("SIGINT", () => {
+process.on("SIGINT", async () => {
   console.log("🛑 SIGINT received, shutting down gracefully...");
   if (server) {
-    server.close(() => process.exit(0));
+    server.close(async () => {
+      await redisConnection.disconnect(); // Disconnect Redis gracefully
+      process.exit(0);
+    });
   } else {
+    await redisConnection.disconnect(); // Disconnect Redis gracefully
     process.exit(0);
   }
 });
 
-process.on("SIGTERM", () => {
+process.on("SIGTERM", async () => {
   console.log("🛑 SIGTERM received, shutting down gracefully...");
   if (server) {
-    server.close(() => process.exit(0));
+    server.close(async () => {
+      await redisConnection.disconnect(); // Disconnect Redis gracefully
+      process.exit(0);
+    });
   } else {
+    await redisConnection.disconnect(); // Disconnect Redis gracefully
     process.exit(0);
   }
 });

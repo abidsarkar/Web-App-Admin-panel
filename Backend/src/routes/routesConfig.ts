@@ -8,9 +8,12 @@ import { categoryRouts } from "../modules/category/category.route";
 import { productRouts } from "../modules/product/product.route";
 import { customerAuthRoutes } from "../modules/customerAuth/customerAuth.route";
 import { customerManagementRouts } from "../modules/managedCustomer/managedCustomer.route";
+import { healthRoutes } from "../redis/health.route";
 export const routesConfig = [
   //testing route
   { path: "/test", handler: getTestPage },
+  // Health check routes - Add this
+  { path: "/api/v1/health", handler: healthRoutes },
   //other routes
   { path: "/api/v1/auth", handler: authRoutes },
   { path: "/api/v1/employee", handler: employeeManagementRouts },

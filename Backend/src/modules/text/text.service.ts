@@ -11,6 +11,7 @@ import { createTextSchema } from "./text.zodSchema";
 import z from "zod";
 import { EmployerInfo } from "../auth/auth.model";
 import { error } from "console";
+import { cacheKeys,CACHE_EXPIRATION, cacheService } from '../../redis/redisUtils';
 
 export const createOrUpdateTextService = async (
   data: z.infer<typeof createTextSchema>,
@@ -18,15 +19,13 @@ export const createOrUpdateTextService = async (
   admin_role: string,
   admin_email: string
 ) => {
-  
   const existingUser = await EmployerInfo.findById(admin_id);
   if (!existingUser) {
     throw new ApiError(httpStatus.CONFLICT, "Use a valid super admin id");
   }
 
-   // Use findOneAndUpdate with upsert
   const text = await TextModel.findOneAndUpdate(
-    {}, // empty filter - works if you only have one document
+    {},
     {
       ...data,
       $setOnInsert: {
@@ -45,13 +44,17 @@ export const createOrUpdateTextService = async (
       },
     },
     {
-      new: true, // return updated document
-      upsert: true, // create if doesn't exist
+      new: true,
+      upsert: true,
       runValidators: true,
     }
   );
 
   const safeUser = text.toObject();
+
+  // Clear all text-related cache when data is updated
+  await cacheService.deleteByPattern('text:*');
+  console.log('🗑️ Cleared text cache after update');
 
   const accessToken = generateAccessToken({
     id: admin_id,
@@ -76,10 +79,30 @@ export const createOrUpdateTextService = async (
   };
 };
 export const getTextService = async (fields?: string[]) => {
-  // If no fields are specified, fetch all
+  // Generate cache key based on fields
+  const cacheKey = fields?.length 
+    ? cacheKeys.text.fields(fields)
+    : cacheKeys.text.full();
+
+  // Try to get from cache first
+  const cachedText = await cacheService.get(cacheKey);
+  if (cachedText) {
+    console.log('📦 Serving text from cache');
+    return {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: fields?.length
+        ? `Fetched selected fields from cache: ${fields.join(", ")}`
+        : "Fetched full text document from cache",
+      error: null,
+      data: cachedText,
+    };
+  }
+
+  // If not in cache, fetch from database
   const projection = fields?.length
     ? fields.reduce((acc, field) => {
-        acc[field] = 1; // 1 = include this field
+        acc[field] = 1;
         return acc;
       }, {} as Record<string, 1>)
     : {};
@@ -90,29 +113,49 @@ export const getTextService = async (fields?: string[]) => {
     throw new ApiError(httpStatus.NOT_FOUND, "No text document found");
   }
 
+  // Store in cache for future requests
+  await cacheService.set(cacheKey, text, CACHE_EXPIRATION.TEXT_DATA);
+
   return {
     statusCode: httpStatus.OK,
     success: true,
     message: fields?.length
       ? `Fetched selected fields: ${fields.join(", ")}`
       : "Fetched full text document",
-    error:null,
+    error: null,
     data: text,
   };
 };
 export const getAllTextService = async (admin_id: string) => {
-  
+  const cacheKey = cacheKeys.text.all();
+
+  // Try cache first
+  const cachedText = await cacheService.get(cacheKey);
+  if (cachedText) {
+    console.log('📦 Serving all text from cache');
+    return {
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Fetched all text document from cache",
+      error: null,
+      data: cachedText,
+    };
+  }
+
   const text = await TextModel.find().lean();
 
-  if (!text) {
+  if (!text || text.length === 0) {
     throw new ApiError(httpStatus.NOT_FOUND, "No text document found");
   }
+
+  // Store in cache
+  await cacheService.set(cacheKey, text, CACHE_EXPIRATION.TEXT_DATA);
 
   return {
     statusCode: httpStatus.OK,
     success: true,
     message: "Fetched all text document",
-    error:null,
+    error: null,
     data: text,
   };
 };

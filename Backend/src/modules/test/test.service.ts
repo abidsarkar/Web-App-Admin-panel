@@ -3,7 +3,6 @@ import httpStatus  from 'http-status';
 import ApiError from "../../errors/ApiError";
 import { Admin } from "./test.model";
 import { generateAccessToken, generateRefreshToken } from '../../utils/JwtToken';
-
 export const loginService = async (email: string, password: string) => {
   // 1️⃣ Find user by email
   const user = await Admin.findOne({ email }).select("+password");
