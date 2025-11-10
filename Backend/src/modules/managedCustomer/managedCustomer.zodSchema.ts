@@ -6,6 +6,11 @@ export const getProfileSchema = z
     _id: z.string().trim().min(2).max(100),
   })
   .strict();
+export const deleteProfileByAdminSchema = z
+  .object({
+    _id: z.string().trim().min(2).max(100),
+  })
+  .strict();
 export const deactivateProfileSchema = z
   .object({
     isActive: z

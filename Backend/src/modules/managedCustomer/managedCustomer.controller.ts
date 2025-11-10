@@ -14,6 +14,7 @@ import {
 import ApiError from "../../errors/ApiError";
 import {
   deactivateProfileSchema,
+  deleteProfileByAdminSchema,
   getAllCustomerInfoSchema,
   getProfileForAdminSchema,
   getProfileSchema,
@@ -23,6 +24,7 @@ import {
 import {
   deactivateCustomerProfileService,
   deleteCustomerProfileService,
+  deleteCustomerProfileService_admin,
   getAllCustomerInformationService,
   getProfileForAdminService,
   getProfileService,
@@ -239,6 +241,38 @@ export const deactivateCustomerProfileController_Admin = catchAsync(
       data: {
         customer: data?.customer,
         newStatus: data?.newStatus,
+        user: data?.user,
+      },
+    });
+  }
+);
+export const deleteCustomerProfileController_admin = catchAsync(
+  async (req: Request, res: Response) => {
+    const parsed = deleteProfileByAdminSchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "delete customer by admin account Validation Error",
+        errors: z.treeifyError(parsed.error),
+      });
+    }
+    const admin_id = req.user?.id;
+    const admin_role = req.user?.role;
+    const admin_email = req.user?.email;
+    const { statusCode, success, message, error, data } =
+      await deleteCustomerProfileService_admin(
+        parsed.data,
+        admin_id!,
+        admin_role!,
+        admin_email!
+      );
+    sendResponse(res, {
+      statusCode,
+      success,
+      message,
+      error,
+      data: {
+        customer: data?.customer,
         user: data?.user,
       },
     });

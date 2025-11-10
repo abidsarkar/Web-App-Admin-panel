@@ -19,6 +19,7 @@ import {
 import {
   deactivateCustomerProfileController_Admin,
     deleteCustomerProfileController,
+  deleteCustomerProfileController_admin,
   getAllCustomerInfoController,
   getProfileManagedCustomerController,
   getProfileManagedCustomerController_Admin,
@@ -68,23 +69,18 @@ router.patch(
   customerProfilePictureUpload,
   updateCustomerProfilePicController
 );
-// router.get(
-//   "/get-all",
-//   adminRoleCheckMiddleware("superAdmin"),
-//   verifyAccessTokenMiddleware,
-//   getProfileManagedCustomerController
-// );
-// router.get(
-//   "/get-all-sup",
-//   adminRoleCheckMiddleware("superAdmin"),
-//   verifyAccessTokenMiddleware,
-//   getProfileManagedCustomerController
-// );
+
 
 router.delete(
   "/delete",
   verifyAccessTokenMiddleware,
   roleCheckMiddleware("customer"),
   deleteCustomerProfileController
+);
+router.delete(
+  "/delete-admin",
+  verifyAccessTokenMiddleware,
+  roleCheckMiddlewareAdmins("superAdmin","editor"),
+  deleteCustomerProfileController_admin
 );
 export const customerManagementRouts = router;

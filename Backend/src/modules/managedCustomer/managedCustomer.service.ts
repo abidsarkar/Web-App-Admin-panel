@@ -1,5 +1,5 @@
 import fs from "fs";
-import z, { size } from "zod";
+import z, { email, size } from "zod";
 import {
   generateAccessToken,
   generateForgotPasswordToken,
@@ -16,6 +16,7 @@ import httpStatus from "http-status";
 import { JWT_SECRET_KEY } from "../../config/envConfig";
 import {
   deactivateProfileSchema,
+  deleteProfileByAdminSchema,
   fileSchema,
   getAllCustomerInfoSchema,
   getProfileForAdminSchema,
@@ -23,6 +24,7 @@ import {
   updateCustomerProfileSchema,
 } from "./managedCustomer.zodSchema";
 import path from "path";
+import { EmployerInfo } from "../auth/auth.model";
 
 export const getProfileService = async (
   data: z.infer<typeof getProfileSchema>,
@@ -33,10 +35,7 @@ export const getProfileService = async (
   const { _id } = data;
   //check if the user is same as logged in user
   if (_id !== user_id) {
-    throw new ApiError(
-      httpStatus.UNAUTHORIZED,
-      "You are not authorized"
-    );
+    throw new ApiError(httpStatus.UNAUTHORIZED, "You are not authorized");
   }
   // 1 Find user by email
   const user = await customerInfoModel.findById(_id);
@@ -155,8 +154,8 @@ export const getAllCustomerInformationService = async (
   admin_email: string
 ) => {
   // 1️⃣ Find all employee who is not role:supperAdmin user by email with pagination
-  const { page, limit, search, isActive,isDeleted, sort, order } = data;
-  const query: any ={};
+  const { page, limit, search, isActive, isDeleted, sort, order } = data;
+  const query: any = {};
   if (isActive !== undefined) query.isActive = isActive;
   if (isDeleted !== undefined) query.isDeleted = isDeleted;
   if (search) {
@@ -171,7 +170,8 @@ export const getAllCustomerInformationService = async (
   const sortOrder = order === "asc" ? 1 : -1;
 
   const [customer, total] = await Promise.all([
-    customerInfoModel.find(query)
+    customerInfoModel
+      .find(query)
       .select(
         "-password -otp -otpExpiresAt -changePasswordExpiresAt -__v -isForgotPasswordVerified"
       )
@@ -285,7 +285,7 @@ export const updateCustomerProfileService = async (
     changePasswordExpiresAt,
     isForgotPasswordVerified,
     isDeleted,
-    
+
     ...safeUser
   } = updatedCustomer.toObject();
   return {
@@ -296,7 +296,7 @@ export const updateCustomerProfileService = async (
     error: null,
     data: {
       accessToken,
-      user: safeUser
+      user: safeUser,
     },
   };
 };
@@ -430,37 +430,37 @@ export const deactivateCustomerProfileService = async (
   data: z.infer<typeof deactivateProfileSchema>,
   admin_id: string,
   admin_role: string,
-  admin_email: string,
+  admin_email: string
 ) => {
-  const { _id,isActive } = data;
- 
+  const { _id, isActive } = data;
+
   // Check if customer exists and is active
   const existingCustomer = await customerInfoModel.findById(_id);
   if (!existingCustomer) {
     throw new ApiError(httpStatus.NOT_FOUND, "User not found");
   }
 
-// 2. Early exit if status is already the desired value
+  // 2. Early exit if status is already the desired value
   if (existingCustomer.isActive === isActive) {
-      const statusMessage = isActive ? 'active' : 'deactivated';
-      return {
-          statusCode: httpStatus.OK,
-          success: true,
-          // Inform the user the status is unchanged to avoid unnecessary updates
-          message: `Profile is already ${statusMessage}`,
-          error: null,
-          data: {
-              customer: existingCustomer.email,
-          },
-      };
+    const statusMessage = isActive ? "active" : "deactivated";
+    return {
+      statusCode: httpStatus.OK,
+      success: true,
+      // Inform the user the status is unchanged to avoid unnecessary updates
+      message: `Profile is already ${statusMessage}`,
+      error: null,
+      data: {
+        customer: existingCustomer.email,
+      },
+    };
   }
 
   // 3. Define the update payload
   const updatePayload = {
-      $set: { 
-          isActive: isActive, // Directly use the value from the frontend
-          // Add audit fields if needed (e.g., updatedBy: admin_email)
-      },
+    $set: {
+      isActive: isActive, // Directly use the value from the frontend
+      // Add audit fields if needed (e.g., updatedBy: admin_email)
+    },
   };
 
   // 4. Perform the update and get the NEW document back
@@ -489,6 +489,51 @@ export const deactivateCustomerProfileService = async (
     data: {
       customer: updatedCustomer.email,
       newStatus: updatedCustomer.isActive,
+      user: {
+        id: admin_id,
+        role: admin_role,
+        email: admin_email,
+      },
+    },
+  };
+};
+export const deleteCustomerProfileService_admin = async (
+  data: z.infer<typeof deleteProfileByAdminSchema>,
+  admin_id: string,
+  admin_role: string,
+  admin_email: string
+) => {
+  const { _id } = data;
+
+  // Check if customer exists and is active
+  const existingCustomer = await EmployerInfo.findById(admin_id);
+  if (!existingCustomer) {
+    throw new ApiError(httpStatus.NOT_FOUND, "User not found");
+  }
+
+  if (!existingCustomer.isActive) {
+    throw new ApiError(
+      httpStatus.FORBIDDEN,
+      "This account is deactivated, please contact help center"
+    );
+  }
+
+  const deleteAccount = await customerInfoModel.findByIdAndDelete(_id);
+
+  if (!deleteAccount) {
+    throw new ApiError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      "Failed to delete profile"
+    );
+  }
+
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Profile delete successfully ",
+    error: null,
+    data: {
+      customer: null,
       user:{
         id:admin_id,
         role:admin_role,
