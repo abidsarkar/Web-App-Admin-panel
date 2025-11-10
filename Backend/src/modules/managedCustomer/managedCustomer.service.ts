@@ -16,6 +16,7 @@ import httpStatus from "http-status";
 import { JWT_SECRET_KEY } from "../../config/envConfig";
 import {
   fileSchema,
+  getAllCustomerInfoSchema,
   getProfileForAdminSchema,
   getProfileSchema,
   updateCustomerProfileSchema,
@@ -33,7 +34,7 @@ export const getProfileService = async (
   if (_id !== user_id) {
     throw new ApiError(
       httpStatus.UNAUTHORIZED,
-      "You are not authorized to change this password"
+      "You are not authorized"
     );
   }
   // 1 Find user by email
@@ -145,6 +146,68 @@ export const getProfileForAdminService = async (
     },
   };
 };
+//get all customer info with filter and pagination
+export const getAllCustomerInformationService = async (
+  data: z.infer<typeof getAllCustomerInfoSchema>,
+  admin_id: string,
+  admin_role: string,
+  admin_email: string
+) => {
+  // 1️⃣ Find all employee who is not role:supperAdmin user by email with pagination
+  const { page, limit, search, isActive,isDeleted, sort, order } = data;
+  const query: any ={};
+  if (isActive !== undefined) query.isActive = isActive;
+  if (isDeleted !== undefined) query.isDeleted = isDeleted;
+  if (search) {
+    query.$or = [
+      { firstName: { $regex: search, $options: "i" } },
+      { lastName: { $regex: search, $options: "i" } },
+      { email: { $regex: search, $options: "i" } },
+    ];
+  }
+  const skip = (page - 1) * limit;
+  const sortField = sort || "createdAt";
+  const sortOrder = order === "asc" ? 1 : -1;
+
+  const [customer, total] = await Promise.all([
+    customerInfoModel.find(query)
+      .select(
+        "-password -otp -otpExpiresAt -changePasswordExpiresAt -__v -isForgotPasswordVerified"
+      )
+      .sort({ [sortField]: sortOrder }) // ✅ Sorting applied here
+      .skip(skip)
+      .limit(limit),
+    customerInfoModel.countDocuments(query),
+  ]);
+
+  const accessToken = generateAccessToken({
+    id: admin_id,
+    role: admin_role,
+    email: admin_email,
+  });
+
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Customer list retrieved successfully!",
+    error: null,
+    data: {
+      accessToken,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+      customer,
+      user: {
+        id: admin_id,
+        role: admin_role,
+        email: admin_email,
+      },
+    },
+  };
+};
 export const updateCustomerProfileService = async (
   data: z.infer<typeof updateCustomerProfileSchema>,
   customer_id: string
@@ -213,7 +276,17 @@ export const updateCustomerProfileService = async (
     role: updatedCustomer.role,
     email: updatedCustomer.email,
   });
-
+  const {
+    password: _,
+    __v,
+    otp,
+    otpExpiresAt,
+    changePasswordExpiresAt,
+    isForgotPasswordVerified,
+    isDeleted,
+    
+    ...safeUser
+  } = updatedCustomer.toObject();
   return {
     statusCode: httpStatus.OK,
     success: true,
@@ -222,7 +295,7 @@ export const updateCustomerProfileService = async (
     error: null,
     data: {
       accessToken,
-      user: updatedCustomer.toObject(),
+      user: safeUser
     },
   };
 };

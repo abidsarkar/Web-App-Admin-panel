@@ -96,7 +96,6 @@ export const forgotPasswordCustomerController = catchAsync(
     const { statusCode, success, message, error, data } =
       await forgotPasswordService(parsed.data);
     sendForgotPasswordCookie(res, data?.forgotPasswordToken);
-
     sendResponse(res, {
       statusCode,
       success,
@@ -120,15 +119,16 @@ export const verifyForgotPasswordOTPCustomerController = catchAsync(
         data: {},
       });
     }
+    const user_email = req.user?.email;
     const { statusCode, success, message, error, user } =
-      await verifyForgotPasswordOTPService(parsed.data);
+      await verifyForgotPasswordOTPService(parsed.data, user_email!);
     sendResponse(res, {
       statusCode,
       success,
       message,
       error,
       data: {
-        user,
+        forgotPasswordToken: user.forgotPasswordToken,
       },
     });
   }
@@ -144,9 +144,10 @@ export const changePasswordCustomerController = catchAsync(
         data: {},
       });
     }
-    
+    const user_email = req.user?.email;
+
     const { statusCode, success, message, error, data } =
-      await PasswordChangeService(parsed.data);
+      await PasswordChangeService(parsed.data,user_email!);
     sendResponse(res, {
       statusCode,
       success,
@@ -167,7 +168,7 @@ export const resendOTPCustomerController = catchAsync(
         data: {},
       });
     }
-  
+
     const { statusCode, success, message, error, data } =
       await resendOTPService(parsed.data);
     sendForgotPasswordCookie(res, data.forgotPasswordToken);
@@ -186,7 +187,6 @@ export const resendOTPCustomerController = catchAsync(
 
 export const changePassword_fromProfileCustomerController = catchAsync(
   async (req: Request, res: Response) => {
-    
     const parsed = changePasswordFromProfileSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(httpStatus.BAD_REQUEST).json({
@@ -196,11 +196,12 @@ export const changePassword_fromProfileCustomerController = catchAsync(
         data: {},
       });
     }
-    const admin_id = req.user?.id; 
-    const admin_role = req.user?.role; 
-    const admin_email = req.user?.email; 
+    const admin_id = req.user?.id;
+    const admin_role = req.user?.role;
+    const admin_email = req.user?.email;
     const { statusCode, success, message, error, data } =
-      await changePassword_FromProfileService(parsed.data,
+      await changePassword_FromProfileService(
+        parsed.data,
         admin_id!,
         admin_role!,
         admin_email!

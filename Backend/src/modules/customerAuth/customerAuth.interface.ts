@@ -34,6 +34,7 @@ export interface ICustomer extends Document {
   lastLogin: Date;
   isDeleted:boolean;
   deletedAt?:Date;
+  refreshToken?:string;
   createdAt: Date;
   updatedAt: Date;
 }

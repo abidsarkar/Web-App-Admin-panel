@@ -13,6 +13,7 @@ import {
 } from "../auth/auth.utils";
 import ApiError from "../../errors/ApiError";
 import {
+  getAllCustomerInfoSchema,
   getProfileForAdminSchema,
   getProfileSchema,
   updateCustomerProfileSchema,
@@ -20,6 +21,7 @@ import {
 } from "./managedCustomer.zodSchema";
 import {
   deleteCustomerProfileService,
+  getAllCustomerInformationService,
   getProfileForAdminService,
   getProfileService,
   updateCustomerProfilePicService,
@@ -88,6 +90,42 @@ export const getProfileManagedCustomerController_Admin = catchAsync(
   }
 );
 //!get all customer for admin with filters
+export const getAllCustomerInfoController = catchAsync(
+  async (req: Request, res: Response) => {
+    const parsed = getAllCustomerInfoSchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "get all employee information Validation Error",
+        errors: z.treeifyError(parsed.error),
+      });
+    }
+    //console.log(parsed.data.role,"admin id from access token")
+    const admin_id = req.user?.id; //supper admin id form accessToken
+    const admin_role = req.user?.role; //supper admin role form accessToken
+    const admin_email = req.user?.email; //supper admin email form accessToken
+    const { statusCode, success, message, error, data } =
+      await getAllCustomerInformationService(
+        parsed.data,
+        admin_id!,
+        admin_role!,
+        admin_email!
+      );
+    sendAccessCookie(res, data?.accessToken);
+    sendResponse(res, {
+      statusCode,
+      success,
+      message,
+      error,
+      data: {
+        accessToken: data?.accessToken,
+        pagination:data?.pagination,
+        customer: data?.customer,
+        user: data?.user,
+      },
+    });
+  }
+);
 //!get all customer for admin with filters
 export const updateManagedCustomerController = catchAsync(
   async (req: Request, res: Response) => {
@@ -170,3 +208,4 @@ export const deleteCustomerProfileController = catchAsync(
     });
   }
 );
+// get all customers for admin with filters

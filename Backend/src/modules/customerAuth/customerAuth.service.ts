@@ -51,21 +51,6 @@ export const loginService = async (data: z.infer<typeof loginSchema>) => {
   if (!isMatch) {
     throw new ApiError(httpStatus.UNAUTHORIZED, "invalid email or password");
   }
-  user.otp = undefined;
-  user.otpExpiresAt = undefined;
-  user.changePasswordExpiresAt = undefined;
-  user.isForgotPasswordVerified = undefined;
-  user.lastLogin = new Date();
-  await user.save();
-  const {
-    password: _,
-    __v,
-    otp,
-    otpExpiresAt,
-    changePasswordExpiresAt,
-    isForgotPasswordVerified,
-    ...safeUser
-  } = user.toObject();
   const accessToken = generateAccessToken({
     id: user._id,
     role: user.role,
@@ -77,6 +62,24 @@ export const loginService = async (data: z.infer<typeof loginSchema>) => {
     role: user.role,
     email: user.email,
   });
+  user.otp = undefined;
+  user.otpExpiresAt = undefined;
+  user.changePasswordExpiresAt = undefined;
+  user.isForgotPasswordVerified = undefined;
+  user.lastLogin = new Date();
+  user.refreshToken = refreshToken;
+  await user.save();
+  const {
+    password: _,
+    __v,
+    otp,
+    otpExpiresAt,
+    changePasswordExpiresAt,
+    isForgotPasswordVerified,
+    refreshToken: __,
+    ...safeUser
+  } = user.toObject();
+
   return {
     statusCode: httpStatus.OK,
     success: true,
@@ -93,40 +96,45 @@ export const loginService = async (data: z.infer<typeof loginSchema>) => {
 export const registerService = async (
   data: z.infer<typeof registerNewCustomerSchema>
 ) => {
-  const { email, password, firstName, lastName, phone,  address } = data;
-  
+  const { email, password, firstName, lastName, phone, address } = data;
+
   // 1️⃣ Find user by email (including deleted users)
   const existingUser = await customerInfoModel.findOne({ email });
 
   // If user exists and is deleted (soft deleted), restore and update
   if (existingUser && existingUser.isDeleted) {
     const hashedPassword = await hashPassword(password);
-    
+
     // Update the existing document instead of creating new one
-    const restoredCustomer = await customerInfoModel.findByIdAndUpdate(
-      existingUser._id,
-      {
-        $set: {
-          firstName,
-          lastName,
-          phone,
-          secondaryPhoneNumber:undefined,
-          address,
-          password: hashedPassword,
-          isDeleted: false,
-          deletedAt: null,
-          isActive: true,
-          updatedAt: new Date()
+    const restoredCustomer = await customerInfoModel
+      .findByIdAndUpdate(
+        existingUser._id,
+        {
+          $set: {
+            firstName,
+            lastName,
+            phone,
+            secondaryPhoneNumber: undefined,
+            address,
+            password: hashedPassword,
+            isDeleted: false,
+            deletedAt: null,
+            isActive: true,
+            updatedAt: new Date(),
+          },
+        },
+        {
+          new: true,
+          runValidators: true,
         }
-      },
-      { 
-        new: true,
-        runValidators: true 
-      }
-    ).select("-password -__v -otp -otpExpiresAt -changePasswordExpiresAt");
+      )
+      .select("-password -__v -otp -otpExpiresAt -changePasswordExpiresAt");
 
     if (!restoredCustomer) {
-      throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, "Failed to restore account");
+      throw new ApiError(
+        httpStatus.INTERNAL_SERVER_ERROR,
+        "Failed to restore account"
+      );
     }
 
     // Send welcome back email
@@ -156,7 +164,10 @@ export const registerService = async (
 
   // If user exists and is NOT deleted
   if (existingUser && !existingUser.isDeleted) {
-    throw new ApiError(httpStatus.CONFLICT, "User already registered with this email");
+    throw new ApiError(
+      httpStatus.CONFLICT,
+      "User already registered with this email"
+    );
   }
 
   // If no user exists, create new one
@@ -176,7 +187,14 @@ export const registerService = async (
   await newCustomer.save();
 
   // Remove sensitive fields
-  const { password: _, __v, otp, otpExpiresAt, changePasswordExpiresAt, ...safeUser } = newCustomer.toObject();
+  const {
+    password: _,
+    __v,
+    otp,
+    otpExpiresAt,
+    changePasswordExpiresAt,
+    ...safeUser
+  } = newCustomer.toObject();
 
   // Send welcome email
   // await sendCreateAccountEmail({
@@ -198,10 +216,6 @@ export const registerService = async (
 export const forgotPasswordService = async (
   data: z.infer<typeof emailSchema>
 ) => {
-  //! check if email is valid using zod
-  //? check if email is valid using zod
-  //todo check if email is valid using zod
-  // * check if email is valid using zod
   const { email } = data;
   // 2 Find user by email
   const user = await customerInfoModel.findOne({ email }).select("-password");
@@ -224,7 +238,13 @@ export const forgotPasswordService = async (
   // 4. Send OTP email to the user
   //!await sendForgotPasswordOTPEmail(email, otp, user.name);
   // Save the user document with the new OTP and expiration time
-  await user.save();
+  const re = await user.save();
+  if (!re) {
+    throw new ApiError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      "Failed to generate OTP.please try again"
+    );
+  }
   const forgotPasswordToken = generateForgotPasswordToken({
     email: user.email,
   });
@@ -243,9 +263,13 @@ export const forgotPasswordService = async (
   };
 };
 export const verifyForgotPasswordOTPService = async (
-  data: z.infer<typeof otpSchema>
+  data: z.infer<typeof otpSchema>,
+  user_email: string
 ) => {
   const { otp, email } = data;
+  if (email !== user_email) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "You are not authorized.");
+  }
   // 1 Find user by email
   const user = await customerInfoModel.findOne({ email }).select("+password");
   if (!user) {
@@ -268,19 +292,27 @@ export const verifyForgotPasswordOTPService = async (
   user.otp = undefined; // Clear the OTP after successful verification
   user.otpExpiresAt = undefined; // Clear the OTP expiration time
   await user.save();
-
+  const forgotPasswordToken = generateForgotPasswordToken({
+    email: user.email,
+  });
   return {
     statusCode: httpStatus.OK,
     success: true,
     message: "OTP verified successfully",
     error: null,
-    user: {},
+    user: {
+      forgotPasswordToken,
+    },
   };
 };
 export const PasswordChangeService = async (
-  data: z.infer<typeof changePasswordSchema>
+  data: z.infer<typeof changePasswordSchema>,
+  user_email: string
 ) => {
   const { email, password } = data;
+  if (email !== user_email) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "You are not authorized.");
+  }
   // 1 Find user by email
   const user = await customerInfoModel.findOne({ email });
   if (!user) {
@@ -433,6 +465,14 @@ export const refreshTokenService = async (refreshToken: string) => {
     email: string;
     role: string;
   };
+  //user info
+  const user = await customerInfoModel.findById(payload.id).select("+refreshToken");
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, "User Not found");
+  }
+  if (user.refreshToken !== refreshToken) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "please login again");
+  }
 
   const accessToken = generateAccessToken({
     id: payload.id,
@@ -444,10 +484,13 @@ export const refreshTokenService = async (refreshToken: string) => {
     role: payload.role,
     email: payload.email,
   });
-  //user info
-  const user = await customerInfoModel.findById(payload.id);
+  user.refreshToken = new_refresh_Token;
+  await user.save();
   if (!user) {
-    throw new ApiError(httpStatus.NOT_FOUND, "User Not found");
+    throw new ApiError(
+      httpStatus.NOT_IMPLEMENTED,
+      "Something went wrong in our side.Please try again"
+    );
   }
   const userData = {
     id: user._id,

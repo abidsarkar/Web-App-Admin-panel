@@ -18,6 +18,7 @@ import {
 } from "../../multer/multer.upload";
 import {
     deleteCustomerProfileController,
+  getAllCustomerInfoController,
   getProfileManagedCustomerController,
   getProfileManagedCustomerController_Admin,
   updateCustomerProfilePicController,
@@ -37,8 +38,14 @@ router.get(
 router.get(
   "/get-admin",
   verifyAccessTokenMiddleware,
-  roleCheckMiddlewareAdmins("superAdmin", "subAdmin"),
+  roleCheckMiddlewareAdmins("superAdmin","editor"),
   getProfileManagedCustomerController_Admin
+);
+router.get(
+  "/get-all-admin",
+  verifyAccessTokenMiddleware,
+  roleCheckMiddlewareAdmins("superAdmin","editor"),
+  getAllCustomerInfoController
 );
 router.patch(
   "/update",
