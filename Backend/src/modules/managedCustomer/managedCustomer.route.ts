@@ -17,6 +17,7 @@ import {
   profilePictureUpload,
 } from "../../multer/multer.upload";
 import {
+  deactivateCustomerProfileController_Admin,
     deleteCustomerProfileController,
   getAllCustomerInfoController,
   getProfileManagedCustomerController,
@@ -53,6 +54,13 @@ router.patch(
   roleCheckMiddleware("customer"),
   updateManagedCustomerController
 );
+router.patch(
+  "/deactivate",
+  verifyAccessTokenMiddleware,
+  roleCheckMiddlewareAdmins("superAdmin","editor"),
+  deactivateCustomerProfileController_Admin
+);
+
 router.patch(
   "/update-profile-pic",
   verifyAccessTokenMiddleware,

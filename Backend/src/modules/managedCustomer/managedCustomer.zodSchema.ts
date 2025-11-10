@@ -6,7 +6,18 @@ export const getProfileSchema = z
     _id: z.string().trim().min(2).max(100),
   })
   .strict();
-
+export const deactivateProfileSchema = z
+  .object({
+    isActive: z
+      .preprocess((val) => {
+        if (val === "true") return true;
+        if (val === "false") return false;
+        return val;
+      }, z.boolean())
+      .optional(),
+    _id: z.string().trim().min(2).max(100),
+  })
+  .strict();
 export const getProfileForAdminSchema = z.object({
   _id: z.string().trim().min(2).max(100).optional(),
   email: z.string().trim().email().optional(),

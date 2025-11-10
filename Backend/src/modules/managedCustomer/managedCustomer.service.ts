@@ -15,6 +15,7 @@ import ApiError from "../../errors/ApiError";
 import httpStatus from "http-status";
 import { JWT_SECRET_KEY } from "../../config/envConfig";
 import {
+  deactivateProfileSchema,
   fileSchema,
   getAllCustomerInfoSchema,
   getProfileForAdminSchema,
@@ -422,6 +423,77 @@ export const deleteCustomerProfileService = async (
     error: null,
     data: {
       customer: null,
+    },
+  };
+};
+export const deactivateCustomerProfileService = async (
+  data: z.infer<typeof deactivateProfileSchema>,
+  admin_id: string,
+  admin_role: string,
+  admin_email: string,
+) => {
+  const { _id,isActive } = data;
+ 
+  // Check if customer exists and is active
+  const existingCustomer = await customerInfoModel.findById(_id);
+  if (!existingCustomer) {
+    throw new ApiError(httpStatus.NOT_FOUND, "User not found");
+  }
+
+// 2. Early exit if status is already the desired value
+  if (existingCustomer.isActive === isActive) {
+      const statusMessage = isActive ? 'active' : 'deactivated';
+      return {
+          statusCode: httpStatus.OK,
+          success: true,
+          // Inform the user the status is unchanged to avoid unnecessary updates
+          message: `Profile is already ${statusMessage}`,
+          error: null,
+          data: {
+              customer: existingCustomer.email,
+          },
+      };
+  }
+
+  // 3. Define the update payload
+  const updatePayload = {
+      $set: { 
+          isActive: isActive, // Directly use the value from the frontend
+          // Add audit fields if needed (e.g., updatedBy: admin_email)
+      },
+  };
+
+  // 4. Perform the update and get the NEW document back
+  const updatedCustomer = await customerInfoModel.findByIdAndUpdate(
+    _id,
+    updatePayload,
+    { new: true } // CRITICAL: Returns the document *after* the update
+  );
+
+  // 5. Check for update failure
+  if (!updatedCustomer) {
+    throw new ApiError(
+      httpStatus.INTERNAL_SERVER_ERROR,
+      "Failed to update profile status"
+    );
+  }
+
+  // 6. Return success response
+  const statusMessage = isActive ? "activated" : "deactivated";
+
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: `Profile status successfully ${statusMessage}`,
+    error: null,
+    data: {
+      customer: updatedCustomer.email,
+      newStatus: updatedCustomer.isActive,
+      user:{
+        id:admin_id,
+        role:admin_role,
+        email:admin_email
+      }
     },
   };
 };

@@ -13,6 +13,7 @@ import {
 } from "../auth/auth.utils";
 import ApiError from "../../errors/ApiError";
 import {
+  deactivateProfileSchema,
   getAllCustomerInfoSchema,
   getProfileForAdminSchema,
   getProfileSchema,
@@ -20,6 +21,7 @@ import {
   uploadProfilePictureSchema,
 } from "./managedCustomer.zodSchema";
 import {
+  deactivateCustomerProfileService,
   deleteCustomerProfileService,
   getAllCustomerInformationService,
   getProfileForAdminService,
@@ -89,7 +91,6 @@ export const getProfileManagedCustomerController_Admin = catchAsync(
     });
   }
 );
-//!get all customer for admin with filters
 export const getAllCustomerInfoController = catchAsync(
   async (req: Request, res: Response) => {
     const parsed = getAllCustomerInfoSchema.safeParse(req.query);
@@ -119,14 +120,14 @@ export const getAllCustomerInfoController = catchAsync(
       error,
       data: {
         accessToken: data?.accessToken,
-        pagination:data?.pagination,
+        pagination: data?.pagination,
         customer: data?.customer,
         user: data?.user,
       },
     });
   }
 );
-//!get all customer for admin with filters
+
 export const updateManagedCustomerController = catchAsync(
   async (req: Request, res: Response) => {
     const parsed = updateCustomerProfileSchema.safeParse(req.body);
@@ -208,4 +209,38 @@ export const deleteCustomerProfileController = catchAsync(
     });
   }
 );
-// get all customers for admin with filters
+//deactivate a customer account
+
+export const deactivateCustomerProfileController_Admin = catchAsync(
+  async (req: Request, res: Response) => {
+    const parsed = deactivateProfileSchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "delete customer account Validation Error",
+        errors: z.treeifyError(parsed.error),
+      });
+    }
+    const admin_id = req.user?.id;
+    const admin_role = req.user?.role;
+    const admin_email = req.user?.email;
+    const { statusCode, success, message, error, data } =
+      await deactivateCustomerProfileService(
+        parsed.data,
+        admin_id!,
+        admin_role!,
+        admin_email!
+      );
+    sendResponse(res, {
+      statusCode,
+      success,
+      message,
+      error,
+      data: {
+        customer: data?.customer,
+        newStatus: data?.newStatus,
+        user: data?.user,
+      },
+    });
+  }
+);
