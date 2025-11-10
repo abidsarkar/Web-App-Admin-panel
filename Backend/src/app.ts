@@ -19,7 +19,7 @@ const app: Application = express();
 app.use(mongoSanitizer());
 //!for global trust ip find
 //! need to study more latter
-// app.set("trust proxy", true);
+ //app.set("trust proxy", true);
 // for global rate limiting to stop brutForce
 app.use(globalRateLimiter);
 app.use(logHttpRequests);

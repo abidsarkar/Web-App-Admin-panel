@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import app from "./app"; // Your Express app
 import { PORT, DATABASE_URL } from "./config/envConfig";
 import seedSuperAdmin from "./DB/index";
+import { scheduleCustomerCleanupJob } from "./cornJobs/customerCleanup.corn";
 
 let server: HttpServer;
 
@@ -34,11 +35,24 @@ async function connectDB() {
   }
 }
 
+function initializeCronJobs() {
+  try {
+    scheduleCustomerCleanupJob();
+    console.log("✅ Customer cleanup cron job initialized");
+  } catch (error) {
+    console.error("❌ Failed to initialize cron jobs:", error);
+  }
+}
+
 async function startServer() {
   await connectDB();
+  
   //! 🦸 Seed Super Admin
-
   //await seedSuperAdmin();
+  
+  // Initialize cron jobs after DB connection
+  initializeCronJobs();
+  
   // Start HTTP server
   server = createServer(app);
   const serverStartTime = Date.now();
@@ -49,6 +63,7 @@ async function startServer() {
         Date.now() - serverStartTime
       }ms to start`
     );
+    console.log(`⏰ Customer cleanup cron job is scheduled`);
   });
 }
 
