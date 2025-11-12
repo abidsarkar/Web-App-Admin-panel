@@ -87,7 +87,7 @@ export const getTextService = async (fields?: string[]) => {
   // Try to get from cache first
   const cachedText = await cacheService.get(cacheKey);
   if (cachedText) {
-    console.log('📦 Serving text from cache');
+    //console.log('📦 Serving text from cache');
     return {
       statusCode: httpStatus.OK,
       success: true,
@@ -132,7 +132,7 @@ export const getAllTextService = async (admin_id: string) => {
   // Try cache first
   const cachedText = await cacheService.get(cacheKey);
   if (cachedText) {
-    console.log('📦 Serving all text from cache');
+    //console.log('📦 Serving all text from cache');
     return {
       statusCode: httpStatus.OK,
       success: true,
