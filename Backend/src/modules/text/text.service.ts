@@ -1,3 +1,5 @@
+//src/modules/tet/text.services.ts
+
 import ExcelJs from "exceljs";
 import argon2 from "argon2";
 import httpStatus from "http-status";
@@ -10,8 +12,14 @@ import { TextModel } from "./text.model";
 import { createTextSchema } from "./text.zodSchema";
 import z from "zod";
 import { EmployerInfo } from "../auth/auth.model";
-import { error } from "console";
-import { cacheKeys,CACHE_EXPIRATION, cacheService } from '../../redis/redisUtils';
+import {
+  textCacheGet,
+  textCacheSet,
+  textCacheKeys,
+  textCacheDeletePattern,
+  textCacheDelete,
+} from "./text.redis";
+import { CACHE_EXPIRATION } from "../../redis/redisUtils";
 
 export const createOrUpdateTextService = async (
   data: z.infer<typeof createTextSchema>,
@@ -53,8 +61,11 @@ export const createOrUpdateTextService = async (
   const safeUser = text.toObject();
 
   // Clear all text-related cache when data is updated
-  await cacheService.deleteByPattern('text:*');
-  console.log('🗑️ Cleared text cache after update');
+  await textCacheDelete(textCacheKeys.full);
+  await textCacheDelete(textCacheKeys.all);
+  // Delete all field-based cache keys
+  await textCacheDeletePattern("text:fields:*");
+  //console.log('🗑️ Cleared text cache after update');
 
   const accessToken = generateAccessToken({
     id: admin_id,
@@ -65,7 +76,7 @@ export const createOrUpdateTextService = async (
   return {
     statusCode: httpStatus.CREATED,
     success: true,
-    message: `Text ${text.createdAt === text.updatedAt ? 'Created' : 'Updated'} Successfully`,
+    message: `Text ${text.createdAt === text.updatedAt ? "Created" : "Updated"} Successfully`,
     error: null,
     data: {
       accessToken,
@@ -80,14 +91,13 @@ export const createOrUpdateTextService = async (
 };
 export const getTextService = async (fields?: string[]) => {
   // Generate cache key based on fields
-  const cacheKey = fields?.length 
-    ? cacheKeys.text.fields(fields)
-    : cacheKeys.text.full();
+  const cacheKey = fields?.length
+    ? textCacheKeys.fields(fields)
+    : textCacheKeys.full;
 
   // Try to get from cache first
-  const cachedText = await cacheService.get(cacheKey);
-  if (cachedText) {
-    //console.log('📦 Serving text from cache');
+  const cached = await textCacheGet(cacheKey);
+  if (cached) {
     return {
       statusCode: httpStatus.OK,
       success: true,
@@ -95,16 +105,19 @@ export const getTextService = async (fields?: string[]) => {
         ? `Fetched selected fields from cache: ${fields.join(", ")}`
         : "Fetched full text document from cache",
       error: null,
-      data: cachedText,
+      data: cached,
     };
   }
 
   // If not in cache, fetch from database
   const projection = fields?.length
-    ? fields.reduce((acc, field) => {
-        acc[field] = 1;
-        return acc;
-      }, {} as Record<string, 1>)
+    ? fields.reduce(
+        (acc, field) => {
+          acc[field] = 1;
+          return acc;
+        },
+        {} as Record<string, 1>
+      )
     : {};
 
   const text = await TextModel.findOne({}, projection).lean();
@@ -114,7 +127,7 @@ export const getTextService = async (fields?: string[]) => {
   }
 
   // Store in cache for future requests
-  await cacheService.set(cacheKey, text, CACHE_EXPIRATION.TEXT_DATA);
+  await textCacheSet(cacheKey, text, CACHE_EXPIRATION.SevenDay);
 
   return {
     statusCode: httpStatus.OK,
@@ -127,18 +140,22 @@ export const getTextService = async (fields?: string[]) => {
   };
 };
 export const getAllTextService = async (admin_id: string) => {
-  const cacheKey = cacheKeys.text.all();
-
-  // Try cache first
-  const cachedText = await cacheService.get(cacheKey);
-  if (cachedText) {
-    //console.log('📦 Serving all text from cache');
+  const existingUser = await EmployerInfo.findById(admin_id);
+  if (!existingUser) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "User not found");
+  }
+  if (existingUser.isActive && existingUser.isActive !== null) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Your account is deactivated");
+  }
+  // Try to get from cache first
+  const cached = await textCacheGet(textCacheKeys.full);
+  if (cached) {
     return {
       statusCode: httpStatus.OK,
       success: true,
       message: "Fetched all text document from cache",
       error: null,
-      data: cachedText,
+      data: cached,
     };
   }
 
@@ -147,9 +164,8 @@ export const getAllTextService = async (admin_id: string) => {
   if (!text || text.length === 0) {
     throw new ApiError(httpStatus.NOT_FOUND, "No text document found");
   }
-
   // Store in cache
-  await cacheService.set(cacheKey, text, CACHE_EXPIRATION.TEXT_DATA);
+  await textCacheSet(textCacheKeys.all, text, CACHE_EXPIRATION.SevenDay);
 
   return {
     statusCode: httpStatus.OK,
@@ -258,14 +274,22 @@ export const exportAllTextContentService = async (
   };
 
   // Wrap text for better readability of long content
-  worksheet.columns.forEach(column => {
-    if (column.key && column.key !== '_id' && column.key !== 'createdAt' && column.key !== 'updatedAt') {
-      worksheet.getColumn(column.key).alignment = { wrapText: true, vertical: 'top' };
+  worksheet.columns.forEach((column) => {
+    if (
+      column.key &&
+      column.key !== "_id" &&
+      column.key !== "createdAt" &&
+      column.key !== "updatedAt"
+    ) {
+      worksheet.getColumn(column.key).alignment = {
+        wrapText: true,
+        vertical: "top",
+      };
     }
   });
 
   // Auto-fit columns for better readability
-  worksheet.columns.forEach(column => {
+  worksheet.columns.forEach((column) => {
     if (column.width) {
       column.width = Math.max(column.width, 15);
     }

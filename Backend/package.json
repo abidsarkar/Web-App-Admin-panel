@@ -1,6 +1,6 @@
 {
   "name": "backend",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "This is the backend for admin panel and dashboard of my web project. in this version i finish admin auth , and managed them reusable text for the website, and category",
   "main": "server.ts",
   "scripts": {
@@ -43,8 +43,10 @@
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.9",
+    "pino": "^10.1.0",
     "prettier": "^3.6.2",
     "sanitize-html": "^2.17.0",
+    "serve-favicon": "^2.5.1",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
     "swagger-jsdoc": "^6.2.8",
@@ -61,6 +63,7 @@
     "@types/node": "^24.5.2",
     "@types/nodemailer": "^7.0.1",
     "@types/sanitize-html": "^2.16.0",
+    "@types/serve-favicon": "^2.5.7",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
     "eslint": "^9.36.0",

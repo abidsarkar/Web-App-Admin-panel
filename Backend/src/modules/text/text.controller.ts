@@ -1,3 +1,4 @@
+//src/modules/tet/text.controller.ts
 import httpStatus from "http-status";
 import { Request, Response } from "express";
 import catchAsync from "../../utils/catchAsync";

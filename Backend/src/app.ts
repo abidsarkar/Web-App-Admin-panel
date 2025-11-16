@@ -13,7 +13,7 @@ import { template } from "./rootTemplate";
 import { globalRateLimiter } from "./middlewares/rateLimiter";
 import mongoSanitizer, { SanitizedRequest } from 'mongo-sanitizer';
 import { FRONTEND_URL } from "./config/envConfig";
-
+import favicon from "serve-favicon"
 // Create an Express application
 const app: Application = express();
 //for global no sql injection prevent
@@ -39,6 +39,8 @@ app.use(
 
 // ✅ Serve static files from root-level "public" folder
 app.use("/public", express.static(path.join(__dirname, "../public")));
+// Serve favicon
+//app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
 //application router
 app.use(router);
 

@@ -5,7 +5,7 @@ import app from "./app"; // Your Express app
 import { PORT, DATABASE_URL } from "./config/envConfig";
 import seedSuperAdmin from "./DB/index";
 import { scheduleCustomerCleanupJob } from "./cornJobs/customerCleanup.corn";
-import { redisConnection } from "./config/redisConfig"; // Add this import
+import { redisConnection } from "./redis/redisConfig"; // Add this import
 
 let server: HttpServer;
 
