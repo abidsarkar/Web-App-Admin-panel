@@ -1,5 +1,5 @@
 DATABASE_URL="" #local
-DATABASE_URL_docker="" #docker
+DATABASE_URL_docker="mongodb://<user>:<password>@mongodb:27017/web-app-admin-panel?authSource=admin" #docker
 MONGO_INITDB_ROOT_USERNAME=""
 MONGO_INITDB_ROOT_PASSWORD=""
 JWT_SECRET_KEY=""
