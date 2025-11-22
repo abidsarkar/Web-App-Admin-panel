@@ -7,7 +7,7 @@
     "dev": "nodemon --watch src --exec ts-node src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "docker:dev": "docker-compose up --build --no-cache",
+    "docker:dev": "docker-compose up --build",
     "docker:dev:localdb": "docker-compose -f docker-compose.localdb.yml up --build",
     "docker:build": "docker build -t your-app-name .",
     "docker:run": "docker run -p 5001:5001 your-app-name",

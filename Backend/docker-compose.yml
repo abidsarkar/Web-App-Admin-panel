@@ -1,0 +1,96 @@
+version: "3.8"
+
+services:
+  app:
+    build: .
+    ports:
+      - "5001:5001"
+    environment:
+      # Database
+      - DATABASE_URL=${DATABASE_URL_docker}
+
+      # JWT
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - REFRESH_SECRET_KEY=${REFRESH_SECRET_KEY}
+      - PORT=5001
+
+      # Nodemailer
+      - NODEMAILER_GMAIL=${NODEMAILER_GMAIL}
+      - NODEMAILER_GMAIL_PASSWORD=${NODEMAILER_GMAIL_PASSWORD}
+
+      # File limits
+      - UPLOAD_FOLDER=${UPLOAD_FOLDER}
+      - MAX_PROFILE_PIC_SIZE=${MAX_PROFILE_PIC_SIZE}
+      - MAX_PRODUCT_COVER_PIC_SIZE=${MAX_PRODUCT_COVER_PIC_SIZE}
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE}
+
+      # OTP
+      - OTP_EXPIRE_TIME=${OTP_EXPIRE_TIME}
+
+      # Environment
+      - NODE_ENV=development
+
+      # Frontend
+      - FRONTEND_URL=${FRONTEND_URL}
+
+      # Cron
+      - CUSTOMER_RETENTION_MONTHS=${CUSTOMER_RETENTION_MONTHS}
+      - CUSTOMER_CLEANUP_CRON_TIME=${CUSTOMER_CLEANUP_CRON_TIME}
+
+      # Redis
+      - REDIS_HOST=redisdb # point to service name here
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_DB=${REDIS_DB}
+
+    depends_on:
+      - mongodb
+      - redisdb
+
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - ./public/uploads:/app/public/uploads
+      - ./public/demoImage:/app/public/demoImage
+      - ./public/images:/app/public/images
+
+    restart: unless-stopped
+
+  mongodb:
+    image: mongo:8.2.2-rc0-noble
+    restart: unless-stopped
+    ports:
+      - "27018:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+    volumes:
+      - mongodb_data:/data/db
+    command:
+      - "--auth"
+
+  # 🟥 Added Redis Container
+  redisdb:
+    image: redis:alpine3.22
+    container_name: backend-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+     
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --appendonly yes
+      --databases 16
+volumes:
+  mongodb_data:
+    driver: local
+    name: mongodb_data
+
+  redis_data:
+    driver: local
+    name: redis_data

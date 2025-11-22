@@ -1,14 +1,40 @@
-DATABASE_URL="mongodb://localhost:27017/web-app-admin-panel" #local
-
-JWT_SECRET_KEY="abcd"
-REFRESH_SECRET_KEY="abcd"
-PORT=5001
-NODEMAILER_GMAIL =abcd@gmail.com
-NODEMAILER_GMAIL_PASSWORD =abcd 
-UPLOAD_FOLDER = "public/images"
+DATABASE_URL="" #local
+DATABASE_URL_docker="" #docker
+MONGO_INITDB_ROOT_USERNAME=""
+MONGO_INITDB_ROOT_PASSWORD=""
+JWT_SECRET_KEY=""
+REFRESH_SECRET_KEY=""
+PORT=
+NODEMAILER_GMAIL =
+NODEMAILER_GMAIL_PASSWORD =
+UPLOAD_FOLDER = ""
 MAX_PROFILE_PIC_SIZE=5242880#5mb
 MAX_PRODUCT_COVER_PIC_SIZE=5242880#5mb
 MAX_FILE_SIZE=10485760 #10mb
-NODE_ENV="development" #development production
 OTP_EXPIRE_TIME = 5*60*1000;
-FRONTEND_URL = "http://localhost:5001"
+NODE_ENV="development" #development production
+FRONTEND_URL = "http://localhost:3000"
+
+######
+# Customer Data Retention Settings
+CUSTOMER_RETENTION_MONTHS=1
+CUSTOMER_CLEANUP_CRON_TIME=0 1 * * *  # 1:00 AM daily
+
+# Alternative cron examples:
+# "0 2 * * *" - 2:00 AM daily
+# "0 1 * * 0" - 1:00 AM every Sunday
+# "0 1 1 * *" - 1:00 AM on 1st day of month
+##test
+# Testing Settings - 1 minute retention
+#CUSTOMER_RETENTION_MINUTES=1
+#CUSTOMER_CLEANUP_CRON_TIME=* * * * *  # Run every minute for testing
+
+# Or for specific time testing (2:52 PM):
+# CUSTOMER_CLEANUP_CRON_TIME=58 14 * * *
+
+##redis
+# Redis Configuration
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=  # Optional
+REDIS_DB=0

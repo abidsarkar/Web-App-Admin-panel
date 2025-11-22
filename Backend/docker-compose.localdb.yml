@@ -1,0 +1,42 @@
+version: "3.8"
+
+services:
+  app:
+    build: .
+    ports:
+      - "5001:5001"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      #jwt
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - REFRESH_SECRET_KEY=${REFRESH_SECRET_KEY}
+      - PORT=5001
+      #nodemailer
+      - NODEMAILER_GMAIL=${NODEMAILER_GMAIL}
+      - NODEMAILER_GMAIL_PASSWORD=${NODEMAILER_GMAIL_PASSWORD}
+      #file limit
+      - UPLOAD_FOLDER=${UPLOAD_FOLDER}
+      - MAX_PROFILE_PIC_SIZE=${MAX_PROFILE_PIC_SIZE}
+      - MAX_PRODUCT_COVER_PIC_SIZE=${MAX_PRODUCT_COVER_PIC_SIZE}
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE}
+      - OTP_EXPIRE_TIME=${OTP_EXPIRE_TIME}
+      - NODE_ENV=development
+      #frontend
+      - FRONTEND_URL=${FRONTEND_URL}
+      #corn
+      - CUSTOMER_RETENTION_MONTHS=${CUSTOMER_RETENTION_MONTHS}
+      - CUSTOMER_CLEANUP_CRON_TIME=${CUSTOMER_CLEANUP_CRON_TIME}
+      #redis
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_DB=${REDIS_DB}
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - ./public/uploads:/app/public/uploads
+      - ./public/demoImage:/app/public/demoImage
+      - ./public/images:/app/public/images
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
