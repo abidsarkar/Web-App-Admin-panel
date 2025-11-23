@@ -9,6 +9,7 @@ import { productRouts } from "../modules/product/product.route";
 import { customerAuthRoutes } from "../modules/customerAuth/customerAuth.route";
 import { customerManagementRouts } from "../modules/managedCustomer/managedCustomer.route";
 import { healthRoutes } from "../redis/health.route";
+import { cartRoutes } from "../modules/cart/cart.route";
 export const routesConfig = [
   //testing route
   { path: "/test", handler: getTestPage },
@@ -22,4 +23,5 @@ export const routesConfig = [
   { path: "/api/v1/product", handler: productRouts },
   { path: "/api/v1/customer-auth", handler: customerAuthRoutes },
   { path: "/api/v1/customer", handler: customerManagementRouts },
+  { path: "/api/v1/cart", handler: cartRoutes },
 ];

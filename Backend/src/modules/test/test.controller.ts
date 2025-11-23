@@ -3,7 +3,7 @@ import { Request, Response } from 'express';
 import catchAsync from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import ApiError from '../../errors/ApiError';
-import { loginService } from './test.service';
+
 import { sendAccessCookie, sendRefreshCookie } from '../auth/auth.utils';
 import z from 'zod';
 import { loginSchema } from './test.zodSchema';

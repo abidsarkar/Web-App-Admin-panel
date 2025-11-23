@@ -11,31 +11,9 @@ import {
 import z from "zod";
 import sendResponse from "../../utils/sendResponse";
 import {
-  getCartService,
   addToCartService,
-  updateCartItemService,
-  removeFromCartService,
-  clearCartService,
-  mergeCartsService,
-  validateCartService,
 } from "./cart.service";
-
-export const getCartController = catchAsync(
-  async (req: Request, res: Response) => {
-    const userId = req.user?.id;
-    const sessionId = req.headers["x-session-id"] as string;
-
-    const cart = await getCartService(userId, sessionId);
-
-    sendResponse(res, {
-      statusCode: httpStatus.OK,
-      success: true,
-      message: "Cart retrieved successfully",
-      error: null,
-      data: cart,
-    });
-  }
-);
+import { sendAccessCookie } from "../customerAuth/customerAuth.utils";
 
 export const addToCartController = catchAsync(
   async (req: Request, res: Response) => {
@@ -48,12 +26,11 @@ export const addToCartController = catchAsync(
       });
     }
 
-    const userId = req.user?.id;
-    const sessionId = req.headers["x-session-id"] as string;
+    const customerId = req.user?.id;
 
     const { statusCode, success, message, error, data } =
-      await addToCartService(parsed.data, userId, sessionId);
-
+      await addToCartService(parsed.data, customerId!);
+    sendAccessCookie(res, data?.accessToken);
     sendResponse(res, {
       statusCode,
       success,
@@ -63,118 +40,131 @@ export const addToCartController = catchAsync(
     });
   }
 );
+// export const getCartController = catchAsync(
+//   async (req: Request, res: Response) => {
+//     const userId = req.user?.id;
 
-export const updateCartItemController = catchAsync(
-  async (req: Request, res: Response) => {
-    const parsed = updateCartItemSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(httpStatus.BAD_REQUEST).json({
-        success: false,
-        message: "Update cart validation error",
-        errors: z.treeifyError(parsed.error),
-      });
-    }
+//     sendResponse(res, {
+//       statusCode: httpStatus.OK,
+//       success: true,
+//       message: "Cart retrieved successfully",
+//       error: null,
+//       data: cart,
+//     });
+//   }
+// );
 
-    const userId = req.user?.id;
-    const sessionId = req.headers["x-session-id"] as string;
+// export const updateCartItemController = catchAsync(
+//   async (req: Request, res: Response) => {
+//     const parsed = updateCartItemSchema.safeParse(req.body);
+//     if (!parsed.success) {
+//       return res.status(httpStatus.BAD_REQUEST).json({
+//         success: false,
+//         message: "Update cart validation error",
+//         errors: z.treeifyError(parsed.error),
+//       });
+//     }
 
-    const { statusCode, success, message, error, data } =
-      await updateCartItemService(parsed.data, userId, sessionId);
+//     const userId = req.user?.id;
+//     const sessionId = req.headers["x-session-id"] as string;
 
-    sendResponse(res, {
-      statusCode,
-      success,
-      message,
-      error,
-      data,
-    });
-  }
-);
+//     const { statusCode, success, message, error, data } =
+//       await updateCartItemService(parsed.data, userId, sessionId);
 
-export const removeFromCartController = catchAsync(
-  async (req: Request, res: Response) => {
-    const parsed = removeFromCartSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(httpStatus.BAD_REQUEST).json({
-        success: false,
-        message: "Remove from cart validation error",
-        errors: z.treeifyError(parsed.error),
-      });
-    }
+//     sendResponse(res, {
+//       statusCode,
+//       success,
+//       message,
+//       error,
+//       data,
+//     });
+//   }
+// );
 
-    const userId = req.user?.id;
-    const sessionId = req.headers["x-session-id"] as string;
+// export const removeFromCartController = catchAsync(
+//   async (req: Request, res: Response) => {
+//     const parsed = removeFromCartSchema.safeParse(req.body);
+//     if (!parsed.success) {
+//       return res.status(httpStatus.BAD_REQUEST).json({
+//         success: false,
+//         message: "Remove from cart validation error",
+//         errors: z.treeifyError(parsed.error),
+//       });
+//     }
 
-    const { statusCode, success, message, error, data } =
-      await removeFromCartService(parsed.data, userId, sessionId);
+//     const userId = req.user?.id;
+//     const sessionId = req.headers["x-session-id"] as string;
 
-    sendResponse(res, {
-      statusCode,
-      success,
-      message,
-      error,
-      data,
-    });
-  }
-);
+//     const { statusCode, success, message, error, data } =
+//       await removeFromCartService(parsed.data, userId, sessionId);
 
-export const clearCartController = catchAsync(
-  async (req: Request, res: Response) => {
-    const userId = req.user?.id;
-    const sessionId = req.headers["x-session-id"] as string;
+//     sendResponse(res, {
+//       statusCode,
+//       success,
+//       message,
+//       error,
+//       data,
+//     });
+//   }
+// );
 
-    const { statusCode, success, message, error, data } =
-      await clearCartService(userId, sessionId);
+// export const clearCartController = catchAsync(
+//   async (req: Request, res: Response) => {
+//     const userId = req.user?.id;
+//     const sessionId = req.headers["x-session-id"] as string;
 
-    sendResponse(res, {
-      statusCode,
-      success,
-      message,
-      error,
-      data,
-    });
-  }
-);
+//     const { statusCode, success, message, error, data } =
+//       await clearCartService(userId, sessionId);
 
-export const mergeCartsController = catchAsync(
-  async (req: Request, res: Response) => {
-    const parsed = mergeCartsSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(httpStatus.BAD_REQUEST).json({
-        success: false,
-        message: "Merge carts validation error",
-        errors: z.treeifyError(parsed.error),
-      });
-    }
+//     sendResponse(res, {
+//       statusCode,
+//       success,
+//       message,
+//       error,
+//       data,
+//     });
+//   }
+// );
 
-    const userId = req.user!.id;
+// export const mergeCartsController = catchAsync(
+//   async (req: Request, res: Response) => {
+//     const parsed = mergeCartsSchema.safeParse(req.body);
+//     if (!parsed.success) {
+//       return res.status(httpStatus.BAD_REQUEST).json({
+//         success: false,
+//         message: "Merge carts validation error",
+//         errors: z.treeifyError(parsed.error),
+//       });
+//     }
 
-    const { statusCode, success, message, error, data } =
-      await mergeCartsService(parsed.data, userId);
+//     const userId = req.user!.id;
 
-    sendResponse(res, {
-      statusCode,
-      success,
-      message,
-      error,
-      data,
-    });
-  }
-);
+//     const { statusCode, success, message, error, data } =
+//       await mergeCartsService(parsed.data, userId);
 
-export const validateCartController = catchAsync(
-  async (req: Request, res: Response) => {
-    const userId = req.user!.id;
+//     sendResponse(res, {
+//       statusCode,
+//       success,
+//       message,
+//       error,
+//       data,
+//     });
+//   }
+// );
 
-    const { statusCode, success, message, error, data } =
-      await validateCartService(userId);
+// export const validateCartController = catchAsync(
+//   async (req: Request, res: Response) => {
+//     const userId = req.user!.id;
 
-    sendResponse(res, {
-      statusCode,
-      success,
-      message,
-      error,
-      data,
-    });
-  }
-);
+//     const { statusCode, success, message, error, data } =
+//       await validateCartService(userId);
+
+//     sendResponse(res, {
+//       statusCode,
+//       success,
+//       message,
+//       error,
+//       data,
+//     });
+//   }
+// );

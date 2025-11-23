@@ -466,7 +466,9 @@ export const refreshTokenService = async (refreshToken: string) => {
     role: string;
   };
   //user info
-  const user = await customerInfoModel.findById(payload.id).select("+refreshToken");
+  const user = await customerInfoModel
+    .findById(payload.id)
+    .select("+refreshToken");
   if (!user) {
     throw new ApiError(httpStatus.NOT_FOUND, "User Not found");
   }
