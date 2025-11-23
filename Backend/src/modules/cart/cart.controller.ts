@@ -15,6 +15,7 @@ import {
   clearCartService,
   getCartWithCache,
   removeFromCartService,
+  updateCartItemService,
 } from "./cart.service";
 import { sendAccessCookie } from "../customerAuth/customerAuth.utils";
 
@@ -98,32 +99,31 @@ export const deleteCartController = catchAsync(
     });
   }
 );
-// export const updateCartItemController = catchAsync(
-//   async (req: Request, res: Response) => {
-//     const parsed = updateCartItemSchema.safeParse(req.body);
-//     if (!parsed.success) {
-//       return res.status(httpStatus.BAD_REQUEST).json({
-//         success: false,
-//         message: "Update cart validation error",
-//         errors: z.treeifyError(parsed.error),
-//       });
-//     }
+export const updateCartItemController = catchAsync(
+  async (req: Request, res: Response) => {
+    const parsed = updateCartItemSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "Update cart validation error",
+        errors: z.treeifyError(parsed.error),
+      });
+    }
 
-//     const userId = req.user?.id;
-//     const sessionId = req.headers["x-session-id"] as string;
+    const customerId = req.user?.id;
 
-//     const { statusCode, success, message, error, data } =
-//       await updateCartItemService(parsed.data, userId, sessionId);
-
-//     sendResponse(res, {
-//       statusCode,
-//       success,
-//       message,
-//       error,
-//       data,
-//     });
-//   }
-// );
+    const { statusCode, success, message, error, data } =
+      await updateCartItemService(parsed.data, customerId!);
+    sendAccessCookie(res, data?.accessToken);
+    sendResponse(res, {
+      statusCode,
+      success,
+      message,
+      error,
+      data,
+    });
+  }
+);
 
 // export const mergeCartsController = catchAsync(
 //   async (req: Request, res: Response) => {

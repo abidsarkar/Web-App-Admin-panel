@@ -14,7 +14,7 @@ import {
 } from "./cart.zodSchema";
 import { z } from "zod";
 import { ICartItem } from "./cart.interface";
-import { calculateItemTotalPrice, validateProductForCart } from "./cart.utils";
+import { calculateItemTotalPrice, ObjectIdUtils, validateProductForCart } from "./cart.utils";
 import {
   cacheProductAvailability,
   cacheUserCart,
@@ -367,21 +367,160 @@ export const clearCartService = async (userId: string) => {
     },
   };
 };
-// Function to clear cart cache (useful for testing or admin operations)
-export const clearCartCache = async (userId: string) => {
-  try {
-    await invalidateUserCartCache(userId);
-    return {
-      success: true,
-      message: "Cart cache cleared successfully",
-    };
-  } catch (error) {
-    console.error("Failed to clear cart cache:", error);
-    return {
-      success: false,
-      message: "Failed to clear cart cache",
-    };
+export const updateCartItemService = async (
+  data: z.infer<typeof updateCartItemSchema>,
+  customerId: string
+) => {
+  const { productId, quantity, size, color } = data;
+
+  // -----------------------------------------
+  // 1. Validate user identity
+  // -----------------------------------------
+
+  // Check valid user
+  const existingUser = await customerInfoModel
+    .findById(customerId)
+    .select("-password");
+
+  if (!existingUser || existingUser.isDeleted) {
+    throw new ApiError(httpStatus.NOT_FOUND, "User not found!");
   }
+
+  if (existingUser.isActive === false) {
+    throw new ApiError(httpStatus.FORBIDDEN, "User account deactivated!");
+  }
+
+  // -----------------------------------------
+  // 2. Get user's cart
+  // -----------------------------------------
+  const cart = await CartModel.findOne({ userId: customerId });
+
+  if (!cart || cart.items.length === 0) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Cart is empty or not found");
+  }
+
+  
+  // -----------------------------------------
+  // 3. Find the item to update
+  // -----------------------------------------
+  const itemIndex = cart.items.findIndex(
+    (item) =>
+      item.productId === productId &&
+      (size ? item.size === size : true) &&
+      (color ? item.color === color : true)
+  );
+
+  if (itemIndex === -1) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Item not found in cart");
+  }
+
+  const cartItem = cart.items[itemIndex];
+
+  const obj = new Types.ObjectId(cartItem.productObjectId);
+  // -----------------------------------------
+  // 4. Handle quantity update
+  // -----------------------------------------
+  if (quantity === 0) {
+    // Remove item if quantity is 0
+    cart.items.splice(itemIndex, 1);
+  } else {
+    // Validate product availability for new quantity
+    const validationResult = await validateProductForCart({
+      productObjectId: ObjectIdUtils.toString(cartItem.productObjectId),
+      productId: cartItem.productId,
+      size: cartItem.size,
+      color: cartItem.color,
+      quantity: quantity,
+    });
+
+    if (!validationResult.isValid) {
+      throw new ApiError(httpStatus.BAD_REQUEST, validationResult.error!);
+    }
+
+    const { product } = validationResult;
+// With this:
+if (!product||product.productPrice === undefined || product.productPrice === null) {
+  throw new ApiError(httpStatus.BAD_REQUEST, "Product price is not available");
+}
+    // Update item quantity and price
+    cart.items[itemIndex].quantity = quantity;
+    cart.items[itemIndex].totalPrice = calculateItemTotalPrice(
+      product.productPrice,
+      quantity
+    );
+    cart.items[itemIndex].pricePerUnit = product.productPrice;
+    
+
+    
+  }
+
+  // Update cart timestamp
+  cart.updatedAt = new Date();
+
+  // -----------------------------------------
+  // 5. Save updated cart
+  // -----------------------------------------
+  const updatedCart = await cart.save();
+  
+
+  // -----------------------------------------
+  // 6. Update Cache
+  // -----------------------------------------
+  
+    // Invalidate user cart cache
+    await invalidateUserCartCache(customerId);
+
+    // Update cache with new cart data
+    await cacheUserCart(customerId, {
+      ...updatedCart.toObject(),
+      cachedAt: new Date().toISOString(),
+    });
+   
+  const accessToken = generateAccessToken({
+    id: customerId,
+    role: existingUser.role,
+    email: existingUser.email,
+  });
+
+  // -----------------------------------------
+  // 7. Response
+  // -----------------------------------------
+  const message =
+    quantity === 0
+      ? "Item removed from cart successfully"
+      : "Cart item quantity updated successfully";
+
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message,
+    error: null,
+    data: {
+      accessToken,
+      cart: updatedCart,
+      updatedItem:
+        quantity === 0
+          ? null
+          : {
+              productId,
+              size,
+              color,
+              oldQuantity: cartItem.quantity,
+              newQuantity: quantity,
+              pricePerUnit: cart.items[itemIndex]?.pricePerUnit,
+              totalPrice: cart.items[itemIndex]?.totalPrice,
+            },
+      removedItem:
+        quantity === 0
+          ? {
+              productId,
+              size,
+              color,
+              productName: cartItem.productName,
+            }
+          : null,
+    },
+  };
 };
 // const processMultipleItems = async (items: any[], userId: string) => {
 //   const validationResults = await Promise.all(

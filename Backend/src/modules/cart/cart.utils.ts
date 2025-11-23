@@ -81,3 +81,52 @@ export const calculateItemTotalPrice = (price: number, quantity: number): number
   // Prevent floating point precision issues
   return Math.round((price * quantity) * 100) / 100;
 };
+// src/utils/objectIdUtils.ts
+import { Types } from "mongoose";
+
+export class ObjectIdUtils {
+  /**
+   * Safely convert to ObjectId
+   */
+  static toObjectId(id: string | Types.ObjectId): Types.ObjectId {
+    if (id instanceof Types.ObjectId) {
+      return id;
+    }
+    
+    if (typeof id === 'string' && Types.ObjectId.isValid(id)) {
+      return new Types.ObjectId(id);
+    }
+    
+    throw new Error(`Invalid ObjectId: ${id}`);
+  }
+
+  /**
+   * Safely convert to string
+   */
+  static toString(id: string | Types.ObjectId): string {
+    if (id instanceof Types.ObjectId) {
+      return id.toString();
+    }
+    
+    if (typeof id === 'string') {
+      return id;
+    }
+    
+    throw new Error(`Invalid id type: ${typeof id}`);
+  }
+
+  /**
+   * Check if valid ObjectId
+   */
+  static isValid(id: string | Types.ObjectId): boolean {
+    if (id instanceof Types.ObjectId) {
+      return true;
+    }
+    
+    if (typeof id === 'string') {
+      return Types.ObjectId.isValid(id);
+    }
+    
+    return false;
+  }
+}

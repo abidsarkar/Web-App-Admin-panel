@@ -5,6 +5,7 @@ import {
   deleteCartController,
   getCartController,
   removeFromCartController,
+  updateCartItemController,
 } from "./cart.controller";
 import { verifyAccessTokenMiddleware } from "../../middlewares/verifyTokenMiddleware";
 import { roleCheckMiddleware } from "../../middlewares/roleCheckMiddleware";
@@ -36,8 +37,13 @@ router.delete(
   roleCheckMiddleware("customer"),
   deleteCartController
 );
-// router.put("/update", updateCartItemController);
-// router.delete("/clear", clearCartController);
+router.patch(
+  "/update",
+  verifyAccessTokenMiddleware,
+  roleCheckMiddleware("customer"),
+  updateCartItemController
+);
+
 
 // // Protected routes (require authentication)
 // router.post("/merge", verifyAccessTokenMiddleware, mergeCartsController);
