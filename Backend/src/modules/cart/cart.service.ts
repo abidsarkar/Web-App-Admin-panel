@@ -30,7 +30,7 @@ export const addToCartService = async (
   customerId: string
 ) => {
   const { userId, items } = data;
-  
+
   // -----------------------------------------
   // 1. Validate user identity
   // -----------------------------------------
@@ -54,7 +54,6 @@ export const addToCartService = async (
   // For now, just process the first item (single product)
   const item = items[0];
 
-  
   // -----------------------------------------
   // 3. Check product availability with cache
   // -----------------------------------------
@@ -67,31 +66,30 @@ export const addToCartService = async (
   }
 
   const { product } = validationResult;
-  
+
   // -----------------------------------------
-  // 4. Get or Create Cart from db. no cached 
+  // 4. Get or Create Cart from db. no cached
   // -----------------------------------------
   const cart = await getOrCreateCart(userId);
-  
 
   // -----------------------------------------
   // 5. Update Cart with Item
   // -----------------------------------------
   const updatedCart = await updateCartItem(cart, item, product, item.quantity);
-  
-   // -----------------------------------------
+
+  // -----------------------------------------
   // 6. Update Cache (invalidate and set new)
   // -----------------------------------------
-  
-    // Invalidate user cart cache first
-    await invalidateUserCartCache(customerId);
-    
-    // Then cache the updated cart
-    await cacheUserCart(customerId, {
-      ...updatedCart.toObject(),
-      cachedAt: new Date().toISOString(),
-    });
-  
+
+  // Invalidate user cart cache first
+  await invalidateUserCartCache(customerId);
+
+  // Then cache the updated cart
+  await cacheUserCart(customerId, {
+    ...updatedCart.toObject(),
+    cachedAt: new Date().toISOString(),
+  });
+
   const accessToken = generateAccessToken({
     id: customerId,
     role: existingUser.role,
@@ -113,7 +111,6 @@ export const addToCartService = async (
 };
 
 export const getOrCreateCart = async (userId: string) => {
-
   let cart = await CartModel.findOne({ userId });
 
   if (!cart) {
@@ -124,7 +121,7 @@ export const getOrCreateCart = async (userId: string) => {
     });
     // Save the new cart to database immediately
     await cart.save();
-  } 
+  }
   return cart;
 };
 
@@ -135,11 +132,13 @@ export const updateCartItem = async (
   quantity: number
 ) => {
   const { productId, size, color } = item;
-  
+
   // Find existing item with same productId, size, and color
   const existingItemIndex = cart.items.findIndex(
-    (cartItem: any) => cartItem.productId === productId
-     && cartItem.size === size && cartItem.color === color
+    (cartItem: any) =>
+      cartItem.productId === productId &&
+      cartItem.size === size &&
+      cartItem.color === color
   );
 
   // If item exists → update quantity
@@ -164,17 +163,17 @@ export const updateCartItem = async (
     cart.items[existingItemIndex].updatedAt = new Date();
   }
   // If NEW item → push into cart
-  else { 
+  else {
     const newItem = {
       ...item,
-      productName:product.productName,
-      productImage:product.productCoverImage.filePathURL,
-      pricePerUnit:product.productPrice,
+      productName: product.productName,
+      productImage: product.productCoverImage.filePathURL,
+      pricePerUnit: product.productPrice,
       totalPrice: calculateItemTotalPrice(product.productPrice, quantity),
       addedAt: new Date(),
       updatedAt: new Date(),
     };
-    
+
     cart.items.push(newItem);
   }
 
@@ -187,35 +186,41 @@ export const updateCartItem = async (
 };
 
 // Additional helper function to get cart with cache
-export const getCartWithCache = async (userId: string) => {
+export const getCartWithCache = async (customerId: string) => {
   // Try cache first
-  const cachedCart = await getCachedUserCart(userId);
+  const cachedCart = await getCachedUserCart(customerId);
 
   if (cachedCart) {
     return {
-      cart: cachedCart,
-      fromCache: true,
+      statusCode: httpStatus.OK,
+      success: true,
+      message: "Item retrieve successfully!",
+      error: null,
+      data: {
+        cart: cachedCart,
+      },
     };
   }
 
   // If not in cache, get from database
-  const cart = await CartModel.findOne({ userId });
+  const cart = await CartModel.findOne({ userId:customerId });
 
   if (cart) {
     // Cache the cart for future requests
-    try {
-      await cacheUserCart(userId, {
-        ...cart.toObject(),
-        cachedAt: new Date().toISOString(),
-      });
-    } catch (cacheError) {
-      console.error("Failed to cache cart:", cacheError);
-    }
+    await cacheUserCart(customerId, {
+      ...cart.toObject(),
+      cachedAt: new Date().toISOString(),
+    });
   }
 
   return {
-    cart,
-    fromCache: false,
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Item retrieve successfully",
+    error: null,
+    data: {
+      cart: cart,
+    },
   };
 };
 

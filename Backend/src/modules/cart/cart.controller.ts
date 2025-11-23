@@ -10,9 +10,7 @@ import {
 } from "./cart.zodSchema";
 import z from "zod";
 import sendResponse from "../../utils/sendResponse";
-import {
-  addToCartService,
-} from "./cart.service";
+import { addToCartService, getCartWithCache } from "./cart.service";
 import { sendAccessCookie } from "../customerAuth/customerAuth.utils";
 
 export const addToCartController = catchAsync(
@@ -30,6 +28,7 @@ export const addToCartController = catchAsync(
 
     const { statusCode, success, message, error, data } =
       await addToCartService(parsed.data, customerId!);
+    res.setHeader('Cache-Control', 'public, max-age=300');
     sendAccessCookie(res, data?.accessToken);
     sendResponse(res, {
       statusCode,
@@ -40,20 +39,22 @@ export const addToCartController = catchAsync(
     });
   }
 );
-// export const getCartController = catchAsync(
-//   async (req: Request, res: Response) => {
-//     const userId = req.user?.id;
-
-//     sendResponse(res, {
-//       statusCode: httpStatus.OK,
-//       success: true,
-//       message: "Cart retrieved successfully",
-//       error: null,
-//       data: cart,
-//     });
-//   }
-// );
-
+export const getCartController = catchAsync(
+  async (req: Request, res: Response) => {
+    const customerId = req.user?.id;
+    const { statusCode, success, message, error, data } =
+      await getCartWithCache(customerId!);
+    sendResponse(res, {
+      statusCode,
+      success,
+      message,
+      error,
+      data: {
+        cart: data?.cart,
+      },
+    });
+  }
+);
 // export const updateCartItemController = catchAsync(
 //   async (req: Request, res: Response) => {
 //     const parsed = updateCartItemSchema.safeParse(req.body);
