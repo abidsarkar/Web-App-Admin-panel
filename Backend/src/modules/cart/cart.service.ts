@@ -203,7 +203,7 @@ export const getCartWithCache = async (customerId: string) => {
   }
 
   // If not in cache, get from database
-  const cart = await CartModel.findOne({ userId:customerId });
+  const cart = await CartModel.findOne({ userId: customerId });
 
   if (cart) {
     // Cache the cart for future requests
@@ -223,7 +223,150 @@ export const getCartWithCache = async (customerId: string) => {
     },
   };
 };
+export const removeFromCartService = async (
+  data: z.infer<typeof removeFromCartSchema>,
+  customerId: string
+) => {
+  const { userId, productId, size, color } = data;
 
+  // -----------------------------------------
+  // 1. Validate user identity
+  // -----------------------------------------
+  if (customerId !== userId) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized cart access");
+  }
+
+  // Check valid user
+  const existingUser = await customerInfoModel
+    .findById(customerId)
+    .select("-password");
+
+  if (!existingUser || existingUser.isDeleted) {
+    throw new ApiError(httpStatus.NOT_FOUND, "User not found!");
+  }
+
+  if (existingUser.isActive === false) {
+    throw new ApiError(httpStatus.FORBIDDEN, "User account deactivated!");
+  }
+
+  // -----------------------------------------
+  // 2. Get user's cart
+  // -----------------------------------------
+  const cart = await CartModel.findOne({ userId });
+
+  if (!cart || cart.items.length === 0) {
+    throw new ApiError(httpStatus.NOT_FOUND, "Cart is empty or not found");
+  }
+
+  // -----------------------------------------
+  // 3. Find and remove the item
+  // -----------------------------------------
+  const initialItemCount = cart.items.length;
+
+  // Filter out the item to remove
+  cart.items = cart.items.filter(
+    (item) =>
+      !(
+        item.productId === productId &&
+        (size ? item.size === size : true) &&
+        (color ? item.color === color : true)
+      )
+  );
+
+  // Check if item was actually removed
+  if (cart.items.length === initialItemCount) {
+    throw new ApiError(
+      httpStatus.NOT_FOUND,
+      "Item not found in cart. It may have been already removed."
+    );
+  }
+
+  // Update cart timestamp
+  cart.updatedAt = new Date();
+
+  // -----------------------------------------
+  // 4. Save updated cart
+  // -----------------------------------------
+  const updatedCart = await cart.save();
+
+  // -----------------------------------------
+  // 5. Update Cache
+  // -----------------------------------------
+
+  // Invalidate user cart cache
+  await invalidateUserCartCache(customerId);
+
+  // Update cache with new cart data
+  await cacheUserCart(customerId, {
+    ...updatedCart.toObject(),
+    cachedAt: new Date().toISOString(),
+  });
+
+  const accessToken = generateAccessToken({
+    id: customerId,
+    role: existingUser.role,
+    email: existingUser.email,
+  });
+
+  // -----------------------------------------
+  // 6. Response
+  // -----------------------------------------
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Item removed from cart successfully",
+    error: null,
+    data: {
+      accessToken,
+      cart: updatedCart,
+      removedItem: { productId, size, color },
+    },
+  };
+};
+// Clear entire cart
+export const clearCartService = async (userId: string) => {
+  // Check valid user
+  const existingUser = await customerInfoModel
+    .findById(userId)
+    .select("-password");
+
+  if (!existingUser || existingUser.isDeleted) {
+    throw new ApiError(httpStatus.NOT_FOUND, "User not found!");
+  }
+
+  if (existingUser.isActive === false) {
+    throw new ApiError(httpStatus.FORBIDDEN, "User account deactivated!");
+  }
+  // -----------------------------------------
+  // 2. Get and clear cart
+  // -----------------------------------------
+  const cart = await CartModel.findOneAndDelete({ userId });
+
+  // -----------------------------------------
+  // 3. Update Cache
+  // -----------------------------------------
+
+  await invalidateUserCartCache(userId);
+
+  const accessToken = generateAccessToken({
+    id: userId,
+    role: existingUser.role,
+    email: existingUser.email,
+  });
+
+  // -----------------------------------------
+  // 4. Response
+  // -----------------------------------------
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "cart is deleted successful",
+    error: null,
+    data: {
+      accessToken,
+    },
+  };
+};
 // Function to clear cart cache (useful for testing or admin operations)
 export const clearCartCache = async (userId: string) => {
   try {

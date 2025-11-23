@@ -79,7 +79,7 @@ async function startServer() {
   await connectRedis(); // Add Redis connection
   
   //! 🦸 Seed Super Admin
-  await seedSuperAdmin();
+  //await seedSuperAdmin();
   
   // Initialize cron jobs after DB connections
   initializeCronJobs();

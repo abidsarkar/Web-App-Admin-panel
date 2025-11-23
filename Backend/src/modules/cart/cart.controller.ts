@@ -10,7 +10,12 @@ import {
 } from "./cart.zodSchema";
 import z from "zod";
 import sendResponse from "../../utils/sendResponse";
-import { addToCartService, getCartWithCache } from "./cart.service";
+import {
+  addToCartService,
+  clearCartService,
+  getCartWithCache,
+  removeFromCartService,
+} from "./cart.service";
 import { sendAccessCookie } from "../customerAuth/customerAuth.utils";
 
 export const addToCartController = catchAsync(
@@ -28,7 +33,7 @@ export const addToCartController = catchAsync(
 
     const { statusCode, success, message, error, data } =
       await addToCartService(parsed.data, customerId!);
-    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.setHeader("Cache-Control", "public, max-age=300");
     sendAccessCookie(res, data?.accessToken);
     sendResponse(res, {
       statusCode,
@@ -49,9 +54,47 @@ export const getCartController = catchAsync(
       success,
       message,
       error,
-      data: {
-        cart: data?.cart,
-      },
+      data,
+    });
+  }
+);
+export const removeFromCartController = catchAsync(
+  async (req: Request, res: Response) => {
+    const parsed = removeFromCartSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "Remove from cart validation error",
+        errors: z.treeifyError(parsed.error),
+      });
+    }
+
+    const customerId = req.user?.id;
+
+    const { statusCode, success, message, error, data } =
+      await removeFromCartService(parsed.data, customerId!);
+    sendAccessCookie(res, data?.accessToken);
+    sendResponse(res, {
+      statusCode,
+      success,
+      message,
+      error,
+      data,
+    });
+  }
+);
+export const deleteCartController = catchAsync(
+  async (req: Request, res: Response) => {
+    const userId = req.user?.id;
+    const { statusCode, success, message, error, data } =
+      await clearCartService(userId!);
+    sendAccessCookie(res, data?.accessToken);
+    sendResponse(res, {
+      statusCode,
+      success,
+      message,
+      error,
+      data,
     });
   }
 );
@@ -71,51 +114,6 @@ export const getCartController = catchAsync(
 
 //     const { statusCode, success, message, error, data } =
 //       await updateCartItemService(parsed.data, userId, sessionId);
-
-//     sendResponse(res, {
-//       statusCode,
-//       success,
-//       message,
-//       error,
-//       data,
-//     });
-//   }
-// );
-
-// export const removeFromCartController = catchAsync(
-//   async (req: Request, res: Response) => {
-//     const parsed = removeFromCartSchema.safeParse(req.body);
-//     if (!parsed.success) {
-//       return res.status(httpStatus.BAD_REQUEST).json({
-//         success: false,
-//         message: "Remove from cart validation error",
-//         errors: z.treeifyError(parsed.error),
-//       });
-//     }
-
-//     const userId = req.user?.id;
-//     const sessionId = req.headers["x-session-id"] as string;
-
-//     const { statusCode, success, message, error, data } =
-//       await removeFromCartService(parsed.data, userId, sessionId);
-
-//     sendResponse(res, {
-//       statusCode,
-//       success,
-//       message,
-//       error,
-//       data,
-//     });
-//   }
-// );
-
-// export const clearCartController = catchAsync(
-//   async (req: Request, res: Response) => {
-//     const userId = req.user?.id;
-//     const sessionId = req.headers["x-session-id"] as string;
-
-//     const { statusCode, success, message, error, data } =
-//       await clearCartService(userId, sessionId);
 
 //     sendResponse(res, {
 //       statusCode,

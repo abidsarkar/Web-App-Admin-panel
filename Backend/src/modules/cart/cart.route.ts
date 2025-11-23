@@ -1,6 +1,11 @@
 // src/modules/cart/cart.route.ts
 import express from "express";
-import { addToCartController, getCartController } from "./cart.controller";
+import {
+  addToCartController,
+  deleteCartController,
+  getCartController,
+  removeFromCartController,
+} from "./cart.controller";
 import { verifyAccessTokenMiddleware } from "../../middlewares/verifyTokenMiddleware";
 import { roleCheckMiddleware } from "../../middlewares/roleCheckMiddleware";
 
@@ -19,8 +24,19 @@ router.post(
   roleCheckMiddleware("customer"),
   addToCartController
 );
+router.delete(
+  "/remove",
+  verifyAccessTokenMiddleware,
+  roleCheckMiddleware("customer"),
+  removeFromCartController
+);
+router.delete(
+  "/delete",
+  verifyAccessTokenMiddleware,
+  roleCheckMiddleware("customer"),
+  deleteCartController
+);
 // router.put("/update", updateCartItemController);
-// router.delete("/remove", removeFromCartController);
 // router.delete("/clear", clearCartController);
 
 // // Protected routes (require authentication)

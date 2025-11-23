@@ -39,6 +39,7 @@ export const updateCartItemSchema = z.object({
 });
 
 export const removeFromCartSchema = z.object({
+  userId: objectIdSchema,
   productId: z.string({ message: "Product ID is required" }).trim().min(1),
   size: z.string().trim().optional(),
   color: z.string().trim().optional(),
