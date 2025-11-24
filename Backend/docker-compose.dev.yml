@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   app:
-    container_name: web-app-admin-backend:dev
+    container_name: backend_dev
     build:
       context: .
       dockerfile: Dockerfile.dev
