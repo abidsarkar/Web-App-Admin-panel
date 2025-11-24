@@ -1,0 +1,2 @@
+npx create-next-app@latest web-app-admin-panel-fronted --yes
+cd web-app-admin-panel-fronted
