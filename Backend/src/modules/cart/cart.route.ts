@@ -4,6 +4,7 @@ import {
   addToCartController,
   deleteCartController,
   getCartController,
+  mergeCartsController,
   removeFromCartController,
   updateCartItemController,
 } from "./cart.controller";
@@ -24,6 +25,12 @@ router.post(
   verifyAccessTokenMiddleware,
   roleCheckMiddleware("customer"),
   addToCartController
+);
+router.post(
+  "/add-offline",
+  verifyAccessTokenMiddleware,
+  roleCheckMiddleware("customer"),
+  mergeCartsController
 );
 router.delete(
   "/remove",

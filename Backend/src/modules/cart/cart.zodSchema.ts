@@ -45,6 +45,7 @@ export const removeFromCartSchema = z.object({
   color: z.string().trim().optional(),
 });
 
-export const mergeCartsSchema = z.object({
-  sessionId: z.string({ message: "Session ID is required" }).trim().min(1),
-});
+export const margeCartSchema = z.object({
+  userId: objectIdSchema,
+  offlineItems:z.array(itemSchema)
+})

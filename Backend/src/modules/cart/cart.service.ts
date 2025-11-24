@@ -9,12 +9,12 @@ import {
   addToCartSchema,
   updateCartItemSchema,
   removeFromCartSchema,
-  mergeCartsSchema,
   itemSchema,
+  margeCartSchema,
 } from "./cart.zodSchema";
 import { z } from "zod";
 import { ICartItem } from "./cart.interface";
-import { calculateItemTotalPrice, ObjectIdUtils, validateProductForCart } from "./cart.utils";
+import { calculateItemTotalPrice, mergeCartItems, ObjectIdUtils, validateOfflineItems, validateProductForCart } from "./cart.utils";
 import {
   cacheProductAvailability,
   cacheUserCart,
@@ -367,6 +367,7 @@ export const clearCartService = async (userId: string) => {
     },
   };
 };
+//quantity update
 export const updateCartItemService = async (
   data: z.infer<typeof updateCartItemSchema>,
   customerId: string
@@ -522,31 +523,89 @@ if (!product||product.productPrice === undefined || product.productPrice === nul
     },
   };
 };
-// const processMultipleItems = async (items: any[], userId: string) => {
-//   const validationResults = await Promise.all(
-//     items.map(item => validateProductForCart(item))
-//   );
 
-//   const validItems = [];
-//   const errors = [];
+export const mergeCartsService = async (
+  data: z.infer<typeof margeCartSchema>,
+  customerId: string
+) => {
+  const { userId, offlineItems } = data;
 
-//   validationResults.forEach((result, index) => {
-//     if (result.isValid) {
-//       validItems.push({ item: items[index], product: result.product });
-//     } else {
-//       errors.push(`Item ${index + 1}: ${result.error}`);
-//     }
-//   });
+  // -----------------------------------------
+  // 1. Validate user identity
+  // -----------------------------------------
+  if (customerId !== userId) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, "Unauthorized cart access");
+  }
 
-//   if (errors.length > 0) {
-//     throw new ApiError(httpStatus.BAD_REQUEST, errors.join('; '));
-//   }
+  // Check valid user
+  const existingUser = await customerInfoModel
+    .findById(customerId)
+    .select("-password");
 
-//   const cart = await getOrCreateCart(userId);
+  if (!existingUser || existingUser.isDeleted) {
+    throw new ApiError(httpStatus.NOT_FOUND, "User not found!");
+  }
 
-//   for (const { item, product } of validItems) {
-//     await updateCartItem(cart, item, product, item.quantity);
-//   }
+  if (existingUser.isActive === false) {
+    throw new ApiError(httpStatus.FORBIDDEN, "User account deactivated!");
+  }
 
-//   return await cart.save();
-// };
+
+  // -----------------------------------------
+  // 2. Get user's online cart
+  // -----------------------------------------
+  let cart = await getOrCreateCart(userId);
+  
+  // -----------------------------------------
+  // 3. Validate offline items before merging
+  // -----------------------------------------
+    const validatedOfflineItems = await validateOfflineItems(offlineItems);
+
+  // -----------------------------------------
+  // 4. Merge carts based on strategy
+  // -----------------------------------------
+  const mergeResult = await mergeCartItems(
+    cart,
+    validatedOfflineItems.validItems,
+    
+  );
+
+
+
+  // -----------------------------------------
+  // 5. Save merged cart
+  // -----------------------------------------
+  cart.updatedAt = new Date();
+  const updatedCart = await cart.save();
+
+  // -----------------------------------------
+  // 6. Update Cache
+  // -----------------------------------------
+  
+    await invalidateUserCartCache(customerId);
+    await cacheUserCart(customerId, {
+      ...updatedCart.toObject(),
+      cachedAt: new Date().toISOString(),
+    });
+ 
+
+  const accessToken = generateAccessToken({
+    id: customerId,
+    role: existingUser.role,
+    email: existingUser.email,
+  });
+
+  // -----------------------------------------
+  // 7. Response
+  // -----------------------------------------
+  return {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Carts merged successfully" ,
+    error: null,
+    data: {
+      accessToken,
+      cart: updatedCart,
+    },
+  };
+};

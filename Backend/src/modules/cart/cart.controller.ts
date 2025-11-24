@@ -6,7 +6,7 @@ import {
   addToCartSchema,
   updateCartItemSchema,
   removeFromCartSchema,
-  mergeCartsSchema,
+  margeCartSchema,
 } from "./cart.zodSchema";
 import z from "zod";
 import sendResponse from "../../utils/sendResponse";
@@ -14,6 +14,7 @@ import {
   addToCartService,
   clearCartService,
   getCartWithCache,
+  mergeCartsService,
   removeFromCartService,
   updateCartItemService,
 } from "./cart.service";
@@ -125,45 +126,29 @@ export const updateCartItemController = catchAsync(
   }
 );
 
-// export const mergeCartsController = catchAsync(
-//   async (req: Request, res: Response) => {
-//     const parsed = mergeCartsSchema.safeParse(req.body);
-//     if (!parsed.success) {
-//       return res.status(httpStatus.BAD_REQUEST).json({
-//         success: false,
-//         message: "Merge carts validation error",
-//         errors: z.treeifyError(parsed.error),
-//       });
-//     }
+export const mergeCartsController = catchAsync(
+  async (req: Request, res: Response) => {
+    const parsed = margeCartSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(httpStatus.BAD_REQUEST).json({
+        success: false,
+        message: "Merge carts validation error",
+        errors: z.treeifyError(parsed.error),
+      });
+    }
 
-//     const userId = req.user!.id;
+    const userId = req.user!.id;
 
-//     const { statusCode, success, message, error, data } =
-//       await mergeCartsService(parsed.data, userId);
+    const { statusCode, success, message, error, data } =
+      await mergeCartsService(parsed.data, userId);
 
-//     sendResponse(res, {
-//       statusCode,
-//       success,
-//       message,
-//       error,
-//       data,
-//     });
-//   }
-// );
+    sendResponse(res, {
+      statusCode,
+      success,
+      message,
+      error,
+      data,
+    });
+  }
+);
 
-// export const validateCartController = catchAsync(
-//   async (req: Request, res: Response) => {
-//     const userId = req.user!.id;
-
-//     const { statusCode, success, message, error, data } =
-//       await validateCartService(userId);
-
-//     sendResponse(res, {
-//       statusCode,
-//       success,
-//       message,
-//       error,
-//       data,
-//     });
-//   }
-// );

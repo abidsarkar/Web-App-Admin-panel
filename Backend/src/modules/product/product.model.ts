@@ -1,3 +1,5 @@
+//src/modules/product/product.model.ts
+
 import { Schema, model } from "mongoose";
 import { IProduct } from "./product.interface";
 
