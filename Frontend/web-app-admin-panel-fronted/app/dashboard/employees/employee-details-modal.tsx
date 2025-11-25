@@ -1,0 +1,133 @@
+"use client";
+
+import { X } from "lucide-react";
+import Image from "next/image";
+
+interface Employee {
+  _id: string;
+  name: string;
+  email: string;
+  role: string;
+  position?: string;
+  isActive: boolean;
+  phone?: string;
+  secondaryPhoneNumber?: string;
+  address?: string;
+  employer_id?: string;
+  profilePicture?: {
+    filePathURL: string;
+  };
+  createdAt?: string;
+}
+
+interface EmployeeDetailsModalProps {
+  employee: Employee | null;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function EmployeeDetailsModal({
+  employee,
+  isOpen,
+  onClose,
+}: EmployeeDetailsModalProps) {
+  if (!isOpen || !employee) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+      <div className="relative w-full max-w-2xl rounded-xl bg-white shadow-2xl">
+        <button
+          onClick={onClose}
+          className="absolute right-4 top-4 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+        >
+          <X className="h-6 w-6" />
+        </button>
+
+        <div className="p-8">
+          <div className="flex flex-col items-center sm:flex-row sm:items-start gap-6 mb-8">
+            <div className="relative h-24 w-24 shrink-0 rounded-full overflow-hidden border-4 border-gray-100 shadow-sm">
+              {employee.profilePicture?.filePathURL ? (
+                <Image
+                  src={`http://localhost:5001/${employee.profilePicture.filePathURL.replace(
+                    /^\.?\/?/,
+                    ""
+                  )}`}
+                  alt={employee.name}
+                  fill
+                  className="object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-blue-50 text-2xl font-bold text-blue-600">
+                  {employee.name.charAt(0)}
+                </div>
+              )}
+            </div>
+            <div className="text-center sm:text-left">
+              <h2 className="text-2xl font-bold text-gray-900">
+                {employee.name}
+              </h2>
+              <p className="text-gray-500">{employee.email}</p>
+              <div className="mt-2 flex flex-wrap justify-center sm:justify-start gap-2">
+                <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                  {employee.role}
+                </span>
+                <span
+                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${
+                    employee.isActive
+                      ? "bg-green-50 text-green-700 ring-green-600/20"
+                      : "bg-red-50 text-red-700 ring-red-600/20"
+                  }`}
+                >
+                  {employee.isActive ? "Active" : "Inactive"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-6 sm:grid-cols-2">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-gray-500">Employer ID</p>
+              <p className="text-base font-medium text-gray-900">
+                {employee.employer_id || "N/A"}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-gray-500">Position</p>
+              <p className="text-base font-medium text-gray-900">
+                {employee.position || "N/A"}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-gray-500">Phone</p>
+              <p className="text-base font-medium text-gray-900">
+                {employee.phone || "N/A"}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-gray-500">
+                Secondary Phone
+              </p>
+              <p className="text-base font-medium text-gray-900">
+                {employee.secondaryPhoneNumber || "N/A"}
+              </p>
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <p className="text-sm font-medium text-gray-500">Address</p>
+              <p className="text-base font-medium text-gray-900">
+                {employee.address || "N/A"}
+              </p>
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <p className="text-sm font-medium text-gray-500">Joined Date</p>
+              <p className="text-base font-medium text-gray-900">
+                {employee.createdAt
+                  ? new Date(employee.createdAt).toLocaleDateString()
+                  : "N/A"}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

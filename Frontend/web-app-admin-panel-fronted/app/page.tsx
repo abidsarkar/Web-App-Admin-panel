@@ -1,12 +1,8 @@
-import { Button } from "@/_components/ui/button"
-import { Spinner } from "@/_components/ui/spinner";
-
 export default function Home() {
+  // This page is largely handled by middleware now, but as a fallback/placeholder:
   return (
-    <div>
-      <h1>welcome abid sarkar</h1>
-       <Button>Click me</Button>
-       <Spinner/>
+    <div className="flex items-center justify-center min-h-screen">
+      <p>Redirecting...</p>
     </div>
   );
 }
