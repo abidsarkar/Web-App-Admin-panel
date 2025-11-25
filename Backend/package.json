@@ -12,9 +12,9 @@
     "docker:dev:down": "docker-compose -f docker-compose.dev.yml down",
     "docker:dev:build": "docker-compose -f docker-compose.dev.yml up --build",
 
-    "docker:pro:build": "docker-compose -f docker-compose.dev.yml up --build",
-    "docker:pro:up": "docker-compose -f docker-compose.dev.yml up",
-    "docker:pro:down": "docker-compose -f docker-compose.dev.yml down"
+    "docker:pro:build": "docker-compose -f docker-compose.production.yml up --build",
+    "docker:pro:up": "docker-compose -f docker-compose.production.yml up",
+    "docker:pro:down": "docker-compose -f docker-compose.production.yml down"
     
   },
   "keywords": [],
