@@ -1,8 +1,12 @@
 import { Response } from "express";
 import { EmployerInfo } from "./auth.model";
-import { NODEMAILER_GMAIL, NODEMAILER_GMAIL_PASSWORD, OTP_EXPIRE_TIME } from "../../config/envConfig";
+import {
+  NODEMAILER_GMAIL,
+  NODEMAILER_GMAIL_PASSWORD,
+  OTP_EXPIRE_TIME,
+} from "../../config/envConfig";
 import ApiError from "../../errors/ApiError";
-import nodemailer from "nodemailer"
+import nodemailer from "nodemailer";
 import { NODE_ENV } from "../../config/envConfig";
 
 export const sendRefreshCookie = (
@@ -14,7 +18,8 @@ export const sendRefreshCookie = (
     httpOnly: true, // Prevents JavaScript access to the cookie
     secure: process.env.NODE_ENV === "production", // Only set cookie over HTTPS in production
     sameSite: "strict", // Helps prevent CSRF attacks
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days 
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    path: "/",
   }); // Set the cookie
 };
 export const sendAccessCookie = (
@@ -26,7 +31,8 @@ export const sendAccessCookie = (
     httpOnly: true, // Prevents JavaScript access to the cookie
     secure: process.env.NODE_ENV === "production", // Only set cookie over HTTPS in production
     sameSite: "strict", // Helps prevent CSRF attacks
-    maxAge: 60 * 60 * 1000, // 1 hour 
+    maxAge: 60 * 60 * 1000, // 1 hour
+     path: "/",
   }); // Set the cookie
 };
 export const sendForgotPasswordCookie = (
@@ -39,6 +45,7 @@ export const sendForgotPasswordCookie = (
     secure: NODE_ENV === "production", // Only set cookie over HTTPS in production
     sameSite: "strict", // Helps prevent CSRF attacks
     maxAge: 5 * 60 * 1000, // 5 minutes
+     path: "/",
   }); // Set the cookie
 };
 export const generateOTP = (): string => {
