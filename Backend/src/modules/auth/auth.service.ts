@@ -331,7 +331,7 @@ export const refreshTokenService = async (refreshToken: string) => {
   //verify refresh token
   // Verify refresh token
   const decoded = jwt.verify(refreshToken, JWT_SECRET_KEY as string);
-  
+
   if (typeof decoded === "string" || !("id" in decoded)) {
     throw new ApiError(httpStatus.UNAUTHORIZED, "Invalid token payload");
   }
@@ -370,7 +370,15 @@ export const refreshTokenService = async (refreshToken: string) => {
     id: user._id,
     name: user.name,
     email: user.email,
+    phone: user.phone,
+    secondaryPhoneNumber: user.secondaryPhoneNumber,
+    address: user.address,
+    profilePicture: user.profilePicture,
+    position: user.position,
+    employer_id: user.employer_id,
     role: user.role,
+    isActive: user.isActive,
+    lastLoginAt: user.lastLoginAt,
   };
   return {
     statusCode: httpStatus.OK,
