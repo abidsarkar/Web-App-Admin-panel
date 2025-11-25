@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useLoginMutation } from "@/redux/Features/Auth/authApi";
+import { setAuthCookies } from "@/utils/cookieHelper";
 
 export default function SignInForm() {
   const router = useRouter();
@@ -21,17 +22,9 @@ export default function SignInForm() {
       const result = await login({ email, password }).unwrap();
 
       if (result.data) {
-        // Store tokens in localStorage
-        if (result.data.accessToken) {
-          localStorage.setItem("accessToken", result.data.accessToken);
-          // Also set in cookie for middleware
-          document.cookie = `accessToken=${result.data.accessToken}; path=/; max-age=${60 * 60 * 24}`; // 1 day
-        }
-
-        if (result.data.refreshToken) {
-          localStorage.setItem("refreshToken", result.data.refreshToken);
-          // Also set in cookie for middleware
-          document.cookie = `refreshToken=${result.data.refreshToken}; path=/; max-age=${60 * 60 * 24 * 7}`; // 7 days
+        // Store tokens in cookies using helper
+        if (result.data.accessToken && result.data.refreshToken) {
+          setAuthCookies(result.data.accessToken, result.data.refreshToken);
         }
 
         // Store user info if provided

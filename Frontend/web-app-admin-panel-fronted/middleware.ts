@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { isTokenExpired } from "./utils/tokenExpire";
 
 // Define public routes that don't require authentication
 const publicRoutes = ["/login", "/forgot-password", "/reset-password"];
@@ -15,72 +16,64 @@ export async function middleware(request: NextRequest) {
   // Get tokens from cookies
   const accessToken = request.cookies.get("accessToken")?.value;
   const refreshToken = request.cookies.get("refreshToken")?.value;
+  // Helper function to refresh tokens
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async function refreshTokens(): Promise<{ success: boolean; user?: any }> {
+    try {
+      const response = await fetch(
+        `${request.nextUrl.origin}/api/proxy/auth/refresh-token`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Cookie: request.headers.get("cookie") || "",
+          },
+          credentials: "include",
+        }
+      );
+      console.log("📨 Response Status:", response.status);
+      console.log("📨 Response Headers:");
+
+      // Check for set-cookie headers in response
+      const setCookieHeader = response.headers.get("set-cookie");
+      console.log("Set-Cookie Header:", setCookieHeader);
+
+      // Log all response headers for debugging
+      response.headers.forEach((value, key) => {
+        console.log(`${key}: ${value}`);
+      });
+      if (response.ok) {
+        const data = await response.json();
+
+        // Extract user data from response if available
+        const userData = data.data?.user || data.user;
+
+        return {
+          success: true,
+          user: userData,
+        };
+      }
+      return { success: false };
+    } catch (error) {
+      console.warn("Token refresh error:", error);
+      return { success: false };
+    }
+  }
 
   // If on root path
   if (pathname === "/") {
-    if (accessToken) {
+    //check accessToken expire client-side first
+    if (accessToken && !isTokenExpired(accessToken)) {
       // Has access token, redirect to dashboard
       return NextResponse.redirect(new URL("/dashboard", request.url));
     } else if (refreshToken) {
-      // Has refresh token, try to validate it
-      try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api/v1"}/auth/refresh`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ refreshToken }),
-          }
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-
-          // Create response to redirect to dashboard
-          const dashboardResponse = NextResponse.redirect(
-            new URL("/dashboard", request.url)
-          );
-
-          // Set new tokens in cookies
-          if (data.data?.accessToken) {
-            dashboardResponse.cookies.set(
-              "accessToken",
-              data.data.accessToken,
-              {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
-                sameSite: "lax",
-                maxAge: 60 * 60 * 24, // 1 day
-              }
-            );
-          }
-
-          if (data.data?.refreshToken) {
-            dashboardResponse.cookies.set(
-              "refreshToken",
-              data.data.refreshToken,
-              {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
-                sameSite: "lax",
-                maxAge: 60 * 60 * 24 * 7, // 7 days
-              }
-            );
-          }
-
-          return dashboardResponse;
-        } else {
-          // Refresh failed, redirect to login
-          return NextResponse.redirect(new URL("/login", request.url));
-        }
-      } catch (error) {
-        console.error("Token refresh error:", error);
+      const refreshResult = await refreshTokens();
+      if (refreshResult.success) {
+        return NextResponse.redirect(new URL("/dashboard", request.url));
+      } else {
         return NextResponse.redirect(new URL("/login", request.url));
       }
     } else {
-      // No tokens, redirect to login
       return NextResponse.redirect(new URL("/login", request.url));
     }
   }
@@ -91,51 +84,11 @@ export async function middleware(request: NextRequest) {
       // No tokens at all, redirect to login
       return NextResponse.redirect(new URL("/login", request.url));
     }
+    // Check if access token is expired but refresh token exists
+    if ((!accessToken || isTokenExpired(accessToken)) && refreshToken) {
+      const refreshResult = await refreshTokens();
 
-    if (!accessToken && refreshToken) {
-      // Try to refresh the token
-      try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001/api/v1"}/auth/refresh`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ refreshToken }),
-          }
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          const nextResponse = NextResponse.next();
-
-          // Set new tokens
-          if (data.data?.accessToken) {
-            nextResponse.cookies.set("accessToken", data.data.accessToken, {
-              httpOnly: true,
-              secure: process.env.NODE_ENV === "production",
-              sameSite: "lax",
-              maxAge: 60 * 60 * 24,
-            });
-          }
-
-          if (data.data?.refreshToken) {
-            nextResponse.cookies.set("refreshToken", data.data.refreshToken, {
-              httpOnly: true,
-              secure: process.env.NODE_ENV === "production",
-              sameSite: "lax",
-              maxAge: 60 * 60 * 24 * 7,
-            });
-          }
-
-          return nextResponse;
-        } else {
-          // Refresh failed, redirect to login
-          return NextResponse.redirect(new URL("/login", request.url));
-        }
-      } catch (error) {
-        console.error("Token refresh error:", error);
+      if (!refreshResult.success) {
         return NextResponse.redirect(new URL("/login", request.url));
       }
     }

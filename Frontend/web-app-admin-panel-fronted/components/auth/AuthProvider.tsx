@@ -3,6 +3,8 @@ import { useEffect } from "react";
 import { useRefreshTokenMutation } from "@/redux/Features/Auth/authApi";
 import Cookies from "js-cookie";
 import { useRouter, usePathname } from "next/navigation";
+import { useDispatch } from "react-redux";
+import { setUser, logout } from "@/redux/features/auth/authSlice";
 
 export default function AuthProvider({
   children,
@@ -12,12 +14,24 @@ export default function AuthProvider({
   const [refreshToken] = useRefreshTokenMutation();
   const router = useRouter();
   const pathname = usePathname();
+  const dispatch = useDispatch();
 
   useEffect(() => {
     const checkAuth = async () => {
       // Only run on client side
       if (typeof window === "undefined") {
         return;
+      }
+
+      // Hydrate user from localStorage on mount
+      const userStr = localStorage.getItem("user");
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          dispatch(setUser(user));
+        } catch (e) {
+          console.error("Failed to parse user from localStorage", e);
+        }
       }
 
       const accessToken = Cookies.get("accessToken");
@@ -49,6 +63,7 @@ export default function AuthProvider({
             // Update user info if provided
             if (result.data?.user) {
               localStorage.setItem("user", JSON.stringify(result.data.user));
+              dispatch(setUser(result.data.user));
             }
           }
         } catch {
@@ -56,6 +71,7 @@ export default function AuthProvider({
           Cookies.remove("accessToken");
           Cookies.remove("refreshToken");
           localStorage.removeItem("user");
+          dispatch(logout());
 
           if (pathname?.startsWith("/dashboard")) {
             router.push("/login");
@@ -65,7 +81,7 @@ export default function AuthProvider({
     };
 
     checkAuth();
-  }, [refreshToken, router, pathname]);
+  }, [refreshToken, router, pathname, dispatch]);
 
   // Render children immediately without loading state
   return <>{children}</>;

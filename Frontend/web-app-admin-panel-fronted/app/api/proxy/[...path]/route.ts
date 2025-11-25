@@ -10,10 +10,13 @@ async function proxyRequest(
   const path = params.path.join("/");
   const url = `${BACKEND_URL}/${path}${request.nextUrl.search}`;
 
+  console.log("🍪 PROXY COOKIE DEBUG START ==========");
+  console.log("Incoming cookies:", request.headers.get("cookie"));
+
   const headers = new Headers(request.headers);
   headers.delete("host");
   headers.delete("connection");
-  headers.delete("content-length"); // Let fetch calculate it
+  headers.delete("content-length");
 
   try {
     const bodyBuffer =
@@ -21,32 +24,58 @@ async function proxyRequest(
         ? await request.arrayBuffer()
         : null;
 
-    console.log(`Proxying ${request.method} request to: ${url}`);
-
-    // Debug logging for JSON bodies
-    if (
-      bodyBuffer &&
-      headers.get("content-type")?.includes("application/json")
-    ) {
-      try {
-        const bodyText = new TextDecoder().decode(bodyBuffer);
-        console.log("Request Body (JSON):", bodyText);
-      } catch (error) {
-        console.error("Failed to decode JSON body for logging");
-      }
-    }
-
     const response = await fetch(url, {
       method: request.method,
       headers: headers,
       body: bodyBuffer,
       cache: "no-store",
+      credentials: "include",
     });
 
     console.log(`Backend response status: ${response.status}`);
 
-    const responseHeaders = new Headers(response.headers);
-    responseHeaders.delete("content-encoding");
+    // COLLECT ALL SET-COOKIE HEADERS
+    const setCookieHeaders: string[] = [];
+    response.headers.forEach((value, key) => {
+      if (key.toLowerCase() === "set-cookie") {
+        setCookieHeaders.push(value);
+        console.log(`🎯 Backend Set-Cookie: ${value}`);
+      }
+    });
+
+    console.log(
+      `Total Set-Cookie headers from backend: ${setCookieHeaders.length}`
+    );
+
+    // Create new response headers
+    const responseHeaders = new Headers();
+
+    // Copy all headers EXCEPT set-cookie (we'll handle them separately)
+    response.headers.forEach((value, key) => {
+      if (key.toLowerCase() !== "set-cookie") {
+        responseHeaders.set(key, value);
+      }
+    });
+
+    // MANUALLY ADD ALL SET-COOKIE HEADERS
+    setCookieHeaders.forEach((cookie) => {
+      responseHeaders.append("set-cookie", cookie); // ← Use APPEND not SET
+    });
+
+    // Verify all cookies are preserved
+    const finalCookies: string[] = [];
+    responseHeaders.forEach((value, key) => {
+      if (key.toLowerCase() === "set-cookie") {
+        finalCookies.push(value);
+      }
+    });
+
+    console.log(`Final Set-Cookie headers to client: ${finalCookies.length}`);
+    finalCookies.forEach((cookie, index) => {
+      console.log(`Cookie ${index + 1}: ${cookie.substring(0, 80)}...`);
+    });
+
+    console.log("🍪 PROXY COOKIE DEBUG END ==========");
 
     return new NextResponse(response.body, {
       status: response.status,
