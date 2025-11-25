@@ -63,6 +63,7 @@ services:
     command: npm run dev
 
   mongodb:
+    container_name: mongo_dev
     image: mongo:8.2.2-rc0-noble
     restart: unless-stopped
     ports:
@@ -77,8 +78,9 @@ services:
 
   # 🟥 Added Redis Container
   redisdb:
+    
     image: redis:alpine3.22
-    container_name: backend-redis
+    container_name: redis_dev
     restart: unless-stopped
     ports:
       - "6379:6379"

@@ -8,9 +8,9 @@
     "build": "tsc",
     "start": "node dist/server.js",
      
-    "docker:dev:up": "docker-compose -f docker-compose.dev.yml up",
-    "docker:dev:down": "docker-compose -f docker-compose.dev.yml down",
-    "docker:dev:build": "docker-compose -f docker-compose.dev.yml up --build",
+    "docker:dev:up": "docker-compose -p backend_dev -f docker-compose.dev.yml up",
+    "docker:dev:down": "docker-compose -p backend_dev -f docker-compose.dev.yml down",
+    "docker:dev:build": "docker-compose -p backend_dev -f docker-compose.dev.yml up --build",
 
     "docker:pro:build": "docker-compose -f docker-compose.production.yml up --build",
     "docker:pro:up": "docker-compose -f docker-compose.production.yml up",
