@@ -1,6 +1,10 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import Cookies from "js-cookie";
-import type { BaseQueryFn, FetchArgs, FetchBaseQueryError } from '@reduxjs/toolkit/query';
+import type {
+  BaseQueryFn,
+  FetchArgs,
+  FetchBaseQueryError,
+} from "@reduxjs/toolkit/query";
 
 // Define a type for the dynamic context, which can contain the request headers
 // This context will be passed from the getServerSideProps wrapper.
@@ -10,17 +14,17 @@ interface ExtraOptions {
 
 // 1. Create the base query (without headers yet)
 const rawBaseQuery = fetchBaseQuery({
-  baseUrl: "http://localhost:5001/api/v1",
+  baseUrl: "/api/proxy",
   credentials: "include",
 });
 
 // 2. Create a wrapper that conditionally reads the token from the context (SSR)
 // or from js-cookie (Client-Side)
 const baseQueryWithAuth: BaseQueryFn<
-  string | FetchArgs, 
-  unknown, 
-  FetchBaseQueryError, 
-  ExtraOptions 
+  string | FetchArgs,
+  unknown,
+  FetchBaseQueryError,
+  ExtraOptions
 > = async (args, api, extraOptions) => {
   const state = api.getState(); // Useful if token was in Redux state, but we use cookies here
 
@@ -32,21 +36,20 @@ const baseQueryWithAuth: BaseQueryFn<
     // For robust parsing, consider using 'cookie' package or a more complex utility
     const cookieHeader = extraOptions.headers.cookie;
     const cookiesMap = new Map(
-      cookieHeader.split('; ').map(c => {
-        const [name, value] = c.split('=');
+      cookieHeader.split("; ").map((c) => {
+        const [name, value] = c.split("=");
         return [name, value];
       }) as [string, string][]
     );
     token = cookiesMap.get("accessToken");
-
-  } 
+  }
   // 🌐 Client-Side Check: Check for the token using js-cookie (Client-Side)
   else {
     token = Cookies.get("accessToken");
   }
 
   // Deep clone the original FetchArgs to ensure no mutation and correct typing
-  const requestArgs = typeof args === 'string' ? { url: args } : { ...args };
+  const requestArgs = typeof args === "string" ? { url: args } : { ...args };
 
   // 3. Prepare Headers: Set Authorization header if token is found
   if (token) {
@@ -60,7 +63,7 @@ const baseQueryWithAuth: BaseQueryFn<
     } else {
       requestArgs.headers = {
         ...requestArgs.headers,
-        "Authorization": `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
       };
     }
   }

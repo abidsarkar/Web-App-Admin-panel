@@ -7,11 +7,11 @@ import {
   useForgotPasswordMutation,
   useVerifyForgotPasswordOTPMutation,
   useChangePasswordMutation,
-} from "@/redux/features/auth/authApi";
-import { Button } from "@/_components/ui/button";
-import { Input } from "@/_components/ui/input";
-import { Label } from "@/_components/ui/label";
-import { Spinner } from "@/_components/ui/spinner";
+  useResendOTPMutation,
+} from "@/redux/Features/Auth/authApi";
+import Button from "@/components/ui/button/Button";
+import Input from "@/components/form/input/InputField";
+import Label from "@/components/form/Label";
 import {
   AlertCircle,
   ArrowLeft,
@@ -38,6 +38,7 @@ export default function ForgotPasswordPage() {
     useVerifyForgotPasswordOTPMutation();
   const [changePassword, { isLoading: isChangingPassword }] =
     useChangePasswordMutation();
+  const [resendOTP, { isLoading: isResendingOTP }] = useResendOTPMutation();
 
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,8 +51,11 @@ export default function ForgotPasswordPage() {
       }
       setStep(2);
       setSuccessMessage("OTP sent to your email.");
-    } catch (err: any) {
-      setError(err.data?.message || "Failed to send OTP.");
+    } catch (err: unknown) {
+      const errorMessage =
+        (err as { data?: { message?: string } })?.data?.message ||
+        "Failed to send OTP.";
+      setError(errorMessage);
     }
   };
 
@@ -71,8 +75,11 @@ export default function ForgotPasswordPage() {
       }
       setStep(3);
       setSuccessMessage("OTP verified. Please set your new password.");
-    } catch (err: any) {
-      setError(err.data?.message || "Invalid OTP.");
+    } catch (err: unknown) {
+      const errorMessage =
+        (err as { data?: { message?: string } })?.data?.message ||
+        "Invalid OTP.";
+      setError(errorMessage);
     }
   };
 
@@ -97,18 +104,39 @@ export default function ForgotPasswordPage() {
       setTimeout(() => {
         router.push("/login");
       }, 2000);
-    } catch (err: any) {
-      const validationErrors = err.data?.errors?.properties;
+    } catch (err: unknown) {
+      const error = err as {
+        data?: {
+          message?: string;
+          errors?: { properties?: Record<string, { errors?: string[] }> };
+        };
+      };
+      const validationErrors = error.data?.errors?.properties;
       if (validationErrors) {
-        const firstError = Object.values(validationErrors)[0] as any;
+        const firstError = Object.values(validationErrors)[0];
         setError(firstError?.errors?.[0] || "Failed to change password.");
       } else {
-        setError(err.data?.message || "Failed to change password.");
+        setError(error.data?.message || "Failed to change password.");
       }
     }
   };
 
-  const isLoading = isSendingOTP || isVerifyingOTP || isChangingPassword;
+  const handleResendOTP = async () => {
+    setError("");
+    setSuccessMessage("");
+    try {
+      await resendOTP(email).unwrap();
+      setSuccessMessage("OTP resent successfully. Please check your email.");
+    } catch (err: unknown) {
+      const errorMessage =
+        (err as { data?: { message?: string } })?.data?.message ||
+        "Failed to resend OTP.";
+      setError(errorMessage);
+    }
+  };
+
+  const isLoading =
+    isSendingOTP || isVerifyingOTP || isChangingPassword || isResendingOTP;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-black p-4">
@@ -168,12 +196,8 @@ export default function ForgotPasswordPage() {
                   />
                 </div>
               </div>
-              <Button
-                type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-500 text-white"
-                disabled={isLoading}
-              >
-                {isLoading ? <Spinner className="w-4 h-4 mr-2" /> : "Send OTP"}
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Sending..." : "Send OTP"}
               </Button>
             </form>
           )}
@@ -197,17 +221,17 @@ export default function ForgotPasswordPage() {
                   />
                 </div>
               </div>
-              <Button
-                type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-500 text-white"
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Verifying..." : "Verify Code"}
+              </Button>
+              <button
+                type="button"
+                className="w-full mt-2 text-sm text-gray-400 hover:text-white transition-colors"
+                onClick={handleResendOTP}
                 disabled={isLoading}
               >
-                {isLoading ? (
-                  <Spinner className="w-4 h-4 mr-2" />
-                ) : (
-                  "Verify Code"
-                )}
-              </Button>
+                {isLoading ? "Resending..." : "Resend OTP"}
+              </button>
             </form>
           )}
 
@@ -247,16 +271,8 @@ export default function ForgotPasswordPage() {
                   />
                 </div>
               </div>
-              <Button
-                type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-500 text-white"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <Spinner className="w-4 h-4 mr-2" />
-                ) : (
-                  "Reset Password"
-                )}
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Resetting..." : "Reset Password"}
               </Button>
             </form>
           )}

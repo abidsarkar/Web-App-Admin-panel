@@ -1,65 +1,54 @@
 "use client";
-import Checkbox from "@/components/form/input/Checkbox";
-import Input from "@/components/form/input/InputField";
-import Label from "@/components/form/Label";
-import Button from "@/components/ui/button/Button";
-import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "@/icons";
+
 import Link from "next/link";
-import React, { useState } from "react";
-// Import Axios for making HTTP requests
-import axios from "axios"; 
-import { Router } from "next/router";
+import { useState, FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { useLoginMutation } from "@/redux/Features/Auth/authApi";
 
 export default function SignInForm() {
-  const [showPassword, setShowPassword] = useState(false);
-  const [isChecked, setIsChecked] = useState(false);
-  
-  // New State for form data, loading, and errors
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const API_ENDPOINT = "http://localhost:5001/api/v1/auth/login"; // Use http:// for local
-  
-  /**
-   * Handles the form submission and communicates with the backend API.
-   */
-  const handleSubmit = async (e) => {
-    e.preventDefault(); // Prevent default form submission behavior
-    
-    // Clear previous error and set loading state
+  const [login, { isLoading }] = useLoginMutation();
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     setError("");
-    setLoading(true);
 
     try {
-      // 1. Make the POST request to the API endpoint
-      const response = await axios.post(API_ENDPOINT, {
-        email: email,
-        password: password,
-      });
+      const result = await login({ email, password }).unwrap();
 
-      // 2. Handle successful response (e.g., store token, redirect)
-      console.log("Login Successful:", response.data);
-      // Example: Store the JWT token (if provided) in localStorage/sessionStorage
-      if (response.data.token) {
-        localStorage.setItem("authToken", response.data.token);
+      if (result.data) {
+        // Store tokens in localStorage
+        if (result.data.accessToken) {
+          localStorage.setItem("accessToken", result.data.accessToken);
+          // Also set in cookie for middleware
+          document.cookie = `accessToken=${result.data.accessToken}; path=/; max-age=${60 * 60 * 24}`; // 1 day
+        }
+
+        if (result.data.refreshToken) {
+          localStorage.setItem("refreshToken", result.data.refreshToken);
+          // Also set in cookie for middleware
+          document.cookie = `refreshToken=${result.data.refreshToken}; path=/; max-age=${60 * 60 * 24 * 7}`; // 7 days
+        }
+
+        // Store user info if provided
+        if (result.data.user) {
+          localStorage.setItem("user", JSON.stringify(result.data.user));
+        }
+
+        // Redirect to dashboard
+        router.push("/dashboard");
       }
-      
-      // Example: Redirect user to the dashboard
-      Router.push("/dashboard"); 
-
-    } catch (err) {
-      // 3. Handle errors
-      console.error("Login Failed:", err);
-      
-      // Check for a specific error message from the backend response
-      const errorMessage = err.response?.data?.message || "An unexpected error occurred during sign-in.";
-      setError(errorMessage);
-
-    } finally {
-      // 4. Reset loading state
-      setLoading(false);
+    } catch (err: unknown) {
+      console.error("Login error:", err);
+      const errorData = err as { data?: { message?: string } };
+      setError(
+        errorData.data?.message ||
+          "Login failed. Please check your credentials."
+      );
     }
   };
 
@@ -70,10 +59,10 @@ export default function SignInForm() {
           href="/"
           className="inline-flex items-center text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
         >
-          <ChevronLeftIcon />
-          Back to dashboard
+          ← Back to home
         </Link>
       </div>
+
       <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
         <div>
           <div className="mb-5 sm:mb-8">
@@ -84,101 +73,86 @@ export default function SignInForm() {
               Enter your email and password to sign in!
             </p>
           </div>
-          {/* ... Social sign-in buttons (omitted for brevity) ... */}
-          
-          <div className="relative py-3 sm:py-5">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200 dark:border-gray-800"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="p-2 text-gray-400 bg-white dark:bg-gray-900 sm:px-5 sm:py-2">
-                Or
-              </span>
-            </div>
-          </div>
-          
-          {/* Form with onSubmit handler */}
+
           <form onSubmit={handleSubmit}>
             <div className="space-y-6">
-              {/* Email Input */}
+              {error && (
+                <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md dark:bg-red-900/20 dark:border-red-800 dark:text-red-400">
+                  {error}
+                </div>
+              )}
+
               <div>
-                <Label>
-                  Email <span className="text-error-500">*</span>{" "}
-                </Label>
-                <Input 
-                  placeholder="info@gmail.com" 
-                  type="email" 
-                  value={email} // Controlled input
-                  onChange={(e) => setEmail(e.target.value)} // Update state
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Email <span className="text-red-500">*</span>
+                </label>
+                <input
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                  placeholder="info@gmail.com"
+                  type="email"
+                  name="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
+                  disabled={isLoading}
                 />
               </div>
-              
-              {/* Password Input */}
+
               <div>
-                <Label>
-                  Password <span className="text-error-500">*</span>{" "}
-                </Label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Password <span className="text-red-500">*</span>
+                </label>
                 <div className="relative">
-                  <Input
-                    type={showPassword ? "text" : "password"}
+                  <input
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                    type="password"
                     placeholder="Enter your password"
-                    value={password} // Controlled input
-                    onChange={(e) => setPassword(e.target.value)} // Update state
+                    name="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     required
+                    disabled={isLoading}
                   />
-                  <span
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute z-30 -translate-y-1/2 cursor-pointer right-4 top-1/2"
-                  >
-                    {showPassword ? (
-                      <EyeIcon className="fill-gray-500 dark:fill-gray-400" />
-                    ) : (
-                      <EyeCloseIcon className="fill-gray-500 dark:fill-gray-400" />
-                    )}
-                  </span>
                 </div>
               </div>
-              
-              {/* Error Message Display */}
-              {error && (
-                <p className="text-sm text-error-500 mt-2">{error}</p>
-              )}
-              
-              {/* Checkbox and Forgot Password */}
+
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Checkbox checked={isChecked} onChange={setIsChecked} />
-                  <span className="block font-normal text-gray-700 text-theme-sm dark:text-gray-400">
+                  <input
+                    type="checkbox"
+                    name="remember"
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <span className="block text-sm text-gray-700 dark:text-gray-400">
                     Keep me logged in
                   </span>
                 </div>
                 <Link
-                  href="/reset-password"
-                  className="text-sm text-brand-500 hover:text-brand-600 dark:text-brand-400"
+                  href="/forgot-password"
+                  className="text-sm text-blue-500 hover:text-blue-600"
                 >
                   Forgot password?
                 </Link>
               </div>
-              
-              {/* Sign In Button */}
+
               <div>
-                <Button className="w-full" size="sm" type="submit" disabled={loading}>
-                  {loading ? "Signing In..." : "Sign in"}
-                </Button>
+                <button
+                  className="w-full px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  type="submit"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Signing in..." : "Sign in"}
+                </button>
               </div>
             </div>
           </form>
 
           <div className="mt-5">
-            <p className="text-sm font-normal text-center text-gray-700 dark:text-gray-400 sm:text-start">
-              Don&apos;t have an account? {""}
-              <Link
-                href="/signup"
-                className="text-brand-500 hover:text-brand-600 dark:text-brand-400"
-              >
-                Sign Up
-              </Link>
+            <p className="text-sm text-center text-gray-700 dark:text-gray-400">
+              {`Don't have an account? `}
+              <span className="text-gray-500 cursor-not-allowed">
+                Contact Admin
+              </span>
             </p>
           </div>
         </div>

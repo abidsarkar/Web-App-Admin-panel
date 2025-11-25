@@ -50,6 +50,20 @@ export const authApi = baseApi.injectEndpoints({
         body: data,
       }),
     }),
+    refreshToken: builder.mutation({
+      query: () => ({
+        url: "/auth/refresh-token",
+        method: "POST",
+      }),
+      invalidatesTags: ["User"],
+    }),
+    resendOTP: builder.mutation({
+      query: (email) => ({
+        url: "/auth/resend-otp",
+        method: "POST",
+        body: { email },
+      }),
+    }),
   }),
   overrideExisting: false,
 });
@@ -61,4 +75,6 @@ export const {
   useVerifyForgotPasswordOTPMutation,
   useChangePasswordMutation,
   useChangePasswordFromProfileMutation,
+  useRefreshTokenMutation,
+  useResendOTPMutation,
 } = authApi;
