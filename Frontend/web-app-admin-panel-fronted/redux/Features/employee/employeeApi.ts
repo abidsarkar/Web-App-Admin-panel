@@ -3,7 +3,17 @@ import { baseApi } from "../../api/baseApi";
 export const employeeApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getEmployees: builder.query({
-      query: () => "/employee/get-all",
+      query: (params) => {
+        const queryString = new URLSearchParams(params).toString();
+        return `/employee/get-all?${queryString}`;
+      },
+      providesTags: ["Employee"],
+    }),
+    getEmployeesSuperAdmin: builder.query({
+      query: (params) => {
+        const queryString = new URLSearchParams(params).toString();
+        return `/employee/get-all-sup?${queryString}`;
+      },
       providesTags: ["Employee"],
     }),
     createEmployee: builder.mutation({
@@ -27,6 +37,7 @@ export const employeeApi = baseApi.injectEndpoints({
 
 export const {
   useGetEmployeesQuery,
+  useGetEmployeesSuperAdminQuery,
   useCreateEmployeeMutation,
   useDeleteEmployeeMutation,
 } = employeeApi;

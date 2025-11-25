@@ -1,68 +1,76 @@
 "use client";
 
-import { useState } from "react";
-import {
-  useGetEmployeesQuery,
-  useDeleteEmployeeMutation,
-} from "@/redux/features/employee/employeeApi";
+import { useState, useEffect } from "react";
 import { Button } from "@/_components/ui/button";
-import { Plus, Trash2, Edit, Search, Eye } from "lucide-react";
+import { Plus } from "lucide-react";
 import Link from "next/link";
-import { Input } from "@/_components/ui/input";
-import { Spinner } from "@/_components/ui/spinner";
-import Image from "next/image";
-import EmployeeDetailsModal from "./employee-details-modal";
-
-interface Employee {
-  _id: string;
-  name: string;
-  email: string;
-  role: string;
-  position?: string;
-  isActive: boolean;
-  profilePicture?: {
-    filePathURL: string;
-  };
-  phone?: string;
-  secondaryPhoneNumber?: string;
-  address?: string;
-  employer_id?: string;
-  createdAt?: string;
-}
+import EmployeeList from "@/components/employee/EmployeeList";
 
 export default function EmployeesPage() {
-  const { data, isLoading, error } = useGetEmployeesQuery(undefined);
-  const [deleteEmployee] = useDeleteEmployeeMutation();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
-    null
-  );
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [role, setRole] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<"normal" | "super">("normal");
+  const [totalCount, setTotalCount] = useState(0);
 
-  const employees: Employee[] = data?.data?.employer || [];
-
-  const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this employee?")) {
+  useEffect(() => {
+    // Get user role from localStorage
+    const userStr = localStorage.getItem("user");
+    if (userStr) {
       try {
-        await deleteEmployee(id).unwrap();
-      } catch (error) {
-        console.error("Failed to delete employee", error);
-        alert("Failed to delete employee");
+        const user = JSON.parse(userStr);
+        setRole(user.role || "");
+      } catch (e) {
+        console.error("Failed to parse user from local storage", e);
       }
     }
-  };
+  }, []);
 
-  const filteredEmployees = employees.filter(
-    (emp) =>
-      emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const isSuperAdmin = role === "superAdmin";
+
+  if (!role) {
+    return (
+      <div className="p-8 flex justify-center">
+        <div className="animate-pulse text-gray-500">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isSuperAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
+        <div className="bg-red-50 text-red-600 p-4 rounded-full mb-4">
+          <svg
+            className="w-8 h-8"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
+          </svg>
+        </div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
+        <p className="text-gray-500 max-w-md">
+          You do not have permission to view this page. Only Super Admins can
+          manage employees.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Employees</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-3xl font-bold tracking-tight">Employees</h2>
+            <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+              Total: {totalCount}
+            </span>
+          </div>
           <p className="text-muted-foreground">
             Manage your organization&apos;s staff members.
           </p>
@@ -75,137 +83,33 @@ export default function EmployeesPage() {
         </Link>
       </div>
 
-      <div className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-gray-200 shadow-sm max-w-md">
-        <Search className="w-5 h-5 text-gray-400" />
-        <Input
-          placeholder="Search employees..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-        />
+      {/* Tabs */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+          <button
+            onClick={() => setActiveTab("normal")}
+            className={`${
+              activeTab === "normal"
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
+            Employees
+          </button>
+          <button
+            onClick={() => setActiveTab("super")}
+            className={`${
+              activeTab === "super"
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
+            Super Admins
+          </button>
+        </nav>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        {isLoading ? (
-          <div className="p-8 flex justify-center">
-            <Spinner className="w-8 h-8 text-blue-600" />
-          </div>
-        ) : error ? (
-          <div className="p-8 text-center text-red-500">
-            Failed to load employees.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-3">Image</th>
-                  <th className="px-6 py-3">Name</th>
-                  <th className="px-6 py-3">Email</th>
-                  <th className="px-6 py-3">Role</th>
-                  <th className="px-6 py-3">Position</th>
-                  <th className="px-6 py-3">Status</th>
-                  <th className="px-6 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredEmployees.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={6}
-                      className="px-6 py-8 text-center text-gray-500"
-                    >
-                      No employees found.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredEmployees.map((employee) => (
-                    <tr
-                      key={employee._id}
-                      className="bg-white border-b hover:bg-gray-50 transition-colors"
-                    >
-                      <td className="px-6 py-4">
-                        {employee.profilePicture?.filePathURL ? (
-                          <div className="relative w-10 h-10 rounded-full overflow-hidden">
-                            <Image
-                              src={`http://localhost:5001/${employee.profilePicture.filePathURL.replace(
-                                /^\.?\/?/,
-                                ""
-                              )}`}
-                              alt={employee.name}
-                              fill
-                              className="object-cover"
-                            />
-                          </div>
-                        ) : (
-                          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
-                            {employee.name.charAt(0)}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 font-medium text-gray-900">
-                        {employee.name}
-                      </td>
-                      <td className="px-6 py-4">{employee.email}</td>
-                      <td className="px-6 py-4">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {employee.role}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">{employee.position || "-"}</td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            employee.isActive
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {employee.isActive ? "Active" : "Inactive"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 hover:text-blue-600"
-                          onClick={() => {
-                            setSelectedEmployee(employee);
-                            setIsModalOpen(true);
-                          }}
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                        >
-                          <Edit className="w-4 h-4 text-gray-500" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 hover:text-red-600"
-                          onClick={() => handleDelete(employee._id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      <EmployeeDetailsModal
-        employee={selectedEmployee}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-      />
+      <EmployeeList listType={activeTab} onTotalCountChange={setTotalCount} />
     </div>
   );
 }
