@@ -1,91 +1,93 @@
 import { NextRequest, NextResponse } from "next/server";
 import { baseUrl } from "../../../../utils/baseUrl";
+import {
+  processSetCookieHeaders,
+  toNextResponseCookieOptions,
+} from "../../../../utils/cookieHelper";
+
 const BACKEND_URL = baseUrl;
 
-async function proxyRequest(
+export async function proxyRequest(
   request: NextRequest,
   props: { params: Promise<{ path: string[] }> }
 ) {
   const params = await props.params;
   const path = params.path.join("/");
-  const url = `${BACKEND_URL}/${path}${request.nextUrl.search}`;
+  const targetUrl = `${BACKEND_URL}/${path}${request.nextUrl.search}`;
 
-  console.log("🍪 PROXY COOKIE DEBUG START ==========");
-  console.log("Incoming cookies:", request.headers.get("cookie"));
+  console.log("🍪 PROXY → Incoming Cookies:", request.headers.get("cookie"));
 
+  // Prepare headers for backend fetch
   const headers = new Headers(request.headers);
   headers.delete("host");
   headers.delete("connection");
   headers.delete("content-length");
 
   try {
+    // Read body for non-GET requests
     const bodyBuffer =
       request.method !== "GET" && request.method !== "HEAD"
         ? await request.arrayBuffer()
         : null;
 
-    const response = await fetch(url, {
+    // Send request to backend
+    const backendResponse = await fetch(targetUrl, {
       method: request.method,
-      headers: headers,
+      headers,
       body: bodyBuffer,
       cache: "no-store",
       credentials: "include",
     });
 
-    console.log(`Backend response status: ${response.status}`);
-
-    // COLLECT ALL SET-COOKIE HEADERS
-    const setCookieHeaders: string[] = [];
-    response.headers.forEach((value, key) => {
-      if (key.toLowerCase() === "set-cookie") {
-        setCookieHeaders.push(value);
-        console.log(`🎯 Backend Set-Cookie: ${value}`);
-      }
+    // Create proxy response
+    const proxyResponse = new NextResponse(backendResponse.body, {
+      status: backendResponse.status,
+      statusText: backendResponse.statusText,
     });
 
-    console.log(
-      `Total Set-Cookie headers from backend: ${setCookieHeaders.length}`
-    );
-
-    // Create new response headers
-    const responseHeaders = new Headers();
-
-    // Copy all headers EXCEPT set-cookie (we'll handle them separately)
-    response.headers.forEach((value, key) => {
+    // Copy all non-cookie headers
+    backendResponse.headers.forEach((value, key) => {
       if (key.toLowerCase() !== "set-cookie") {
-        responseHeaders.set(key, value);
+        proxyResponse.headers.set(key, value);
       }
     });
 
-    // MANUALLY ADD ALL SET-COOKIE HEADERS
-    setCookieHeaders.forEach((cookie) => {
-      responseHeaders.append("set-cookie", cookie); // ← Use APPEND not SET
-    });
-
-    // Verify all cookies are preserved
-    const finalCookies: string[] = [];
-    responseHeaders.forEach((value, key) => {
+    // Collect Set-Cookie headers
+    const setCookies: string[] = [];
+    backendResponse.headers.forEach((value, key) => {
       if (key.toLowerCase() === "set-cookie") {
-        finalCookies.push(value);
+        setCookies.push(value);
+        console.log("🎯 Backend Set-Cookie →", value);
       }
     });
 
-    console.log(`Final Set-Cookie headers to client: ${finalCookies.length}`);
-    finalCookies.forEach((cookie, index) => {
-      console.log(`Cookie ${index + 1}: ${cookie.substring(0, 80)}...`);
+    console.log("🍪 Total cookies received:", setCookies.length);
+
+    // Parse Set-Cookie headers into structured objects
+    const parsedCookies = processSetCookieHeaders(setCookies);
+
+    // Set cookies on NextResponse (ONLY here!!)
+    parsedCookies.forEach((cookie) => {
+      try {
+        const options = toNextResponseCookieOptions(cookie);
+
+        proxyResponse.cookies.set(cookie.name, cookie.value, options);
+
+        console.log(`✅ Cookie forwarded: ${cookie.name}`);
+      } catch (err) {
+        console.error(`❌ Failed to set ${cookie.name}:`, err);
+      }
     });
 
-    console.log("🍪 PROXY COOKIE DEBUG END ==========");
+    // Debug final cookies sent to browser
+    const finalCookies = proxyResponse.cookies.getAll();
+    console.log("🍪 Final cookies in browser:", finalCookies);
 
-    return new NextResponse(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: responseHeaders,
-    });
+    return proxyResponse;
   } catch (error) {
-    console.error("Proxy error:", error);
+    console.error("❌ Proxy Error:", error);
     return NextResponse.json(
-      { error: "Internal Server Error" },
+      { error: "Proxy Internal Server Error" },
       { status: 500 }
     );
   }

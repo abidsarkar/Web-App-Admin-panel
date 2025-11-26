@@ -1,112 +1,92 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { isTokenExpired } from "./utils/tokenExpire";
+// middleware.ts
+import { NextResponse, NextRequest } from "next/server";
 
-// Define public routes that don't require authentication
-const publicRoutes = ["/login", "/forgot-password", "/reset-password"];
+const PROTECTED_ROUTES = ["/dashboard", "/products", "/orders", "/customers"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow public routes
-  if (publicRoutes.some((route) => pathname.startsWith(route))) {
+  const accessToken = request.cookies.get("accessToken")?.value;
+  const refreshToken = request.cookies.get("refreshToken")?.value;
+
+  const isProtected = PROTECTED_ROUTES.some((route) =>
+    pathname.startsWith(route)
+  );
+
+  // 1️⃣ If not protected route → allow access
+  if (!isProtected) return NextResponse.next();
+
+  // 2️⃣ If user has accessToken → allow access
+  if (accessToken) {
     return NextResponse.next();
   }
 
-  // Get tokens from cookies
-  const accessToken = request.cookies.get("accessToken")?.value;
-  const refreshToken = request.cookies.get("refreshToken")?.value;
-  // Helper function to refresh tokens
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async function refreshTokens(): Promise<{ success: boolean; user?: any }> {
-    try {
-      const response = await fetch(
-        `${request.nextUrl.origin}/api/proxy/auth/refresh-token`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Cookie: request.headers.get("cookie") || "",
-          },
-          credentials: "include",
-        }
-      );
-      console.log("📨 Response Status:", response.status);
-      console.log("📨 Response Headers:");
+  // 3️⃣ If no accessToken but has refreshToken → try to refresh
+  if (!accessToken && refreshToken) {
+    const refreshed = await refreshTokens(request);
 
-      // Check for set-cookie headers in response
-      const setCookieHeader = response.headers.get("set-cookie");
-      console.log("Set-Cookie Header:", setCookieHeader);
+    if (refreshed) {
+      const response = NextResponse.next();
 
-      // Log all response headers for debugging
-      response.headers.forEach((value, key) => {
-        console.log(`${key}: ${value}`);
+      // Set ALL cookies returned from backend
+      refreshed.cookies.forEach((cookie) => {
+        response.headers.append("set-cookie", cookie);
       });
-      if (response.ok) {
-        const data = await response.json();
 
-        // Extract user data from response if available
-        const userData = data.data?.user || data.user;
-
-        return {
-          success: true,
-          user: userData,
-        };
-      }
-      return { success: false };
-    } catch (error) {
-      console.warn("Token refresh error:", error);
-      return { success: false };
+      return response;
     }
+
+    // Failed refresh → send to login
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // If on root path
-  if (pathname === "/") {
-    //check accessToken expire client-side first
-    if (accessToken && !isTokenExpired(accessToken)) {
-      // Has access token, redirect to dashboard
-      return NextResponse.redirect(new URL("/dashboard", request.url));
-    } else if (refreshToken) {
-      const refreshResult = await refreshTokens();
-      if (refreshResult.success) {
-        return NextResponse.redirect(new URL("/dashboard", request.url));
-      } else {
-        return NextResponse.redirect(new URL("/login", request.url));
-      }
-    } else {
-      return NextResponse.redirect(new URL("/login", request.url));
-    }
-  }
-
-  // For protected routes (like /dashboard)
-  if (pathname.startsWith("/dashboard")) {
-    if (!accessToken && !refreshToken) {
-      // No tokens at all, redirect to login
-      return NextResponse.redirect(new URL("/login", request.url));
-    }
-    // Check if access token is expired but refresh token exists
-    if ((!accessToken || isTokenExpired(accessToken)) && refreshToken) {
-      const refreshResult = await refreshTokens();
-
-      if (!refreshResult.success) {
-        return NextResponse.redirect(new URL("/login", request.url));
-      }
-    }
-  }
-
-  return NextResponse.next();
+  // 4️⃣ No tokens at all → redirect to login
+  return NextResponse.redirect(new URL("/login", request.url));
 }
 
-// Configure which routes to run middleware on
+// ---------------------------------------------
+// 🔄 Helper: Refresh token through proxy route
+// ---------------------------------------------
+async function refreshTokens(request: NextRequest) {
+  try {
+    const backendRes = await fetch(
+      `${request.nextUrl.origin}/api/proxy/auth/refresh-token`,
+      {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          cookie: request.headers.get("cookie") || "",
+        },
+      }
+    );
+
+    if (!backendRes.ok) return null;
+
+    // Collect multiple Set-Cookie headers
+    const rawSetCookies: string[] = [];
+    backendRes.headers.forEach((value, key) => {
+      if (key.toLowerCase() === "set-cookie") {
+        rawSetCookies.push(value);
+      }
+    });
+
+    // No cookies returned → invalid refresh
+    if (rawSetCookies.length === 0) return null;
+
+    return {
+      cookies: rawSetCookies,
+    };
+  } catch (error) {
+    console.error("❌ Refresh token error:", error);
+    return null;
+  }
+}
+
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/dashboard/:path*",
+    "/products/:path*",
+    "/orders/:path*",
+    "/customers/:path*",
   ],
 };
