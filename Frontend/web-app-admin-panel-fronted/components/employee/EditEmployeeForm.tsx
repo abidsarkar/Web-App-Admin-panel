@@ -27,6 +27,85 @@ interface EditEmployeeFormProps {
   onSuccess?: () => void;
 }
 
+// Define form data type
+type FormData = {
+  _id: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
+  position: string;
+  address: string;
+  employer_id: string;
+  secondaryPhoneNumber: string;
+  isActive: boolean;
+  password: string;
+};
+
+// Define FieldWithLock component OUTSIDE of EditEmployeeForm
+interface FieldWithLockProps {
+  name: keyof FormData;
+  label: string;
+  type?: string;
+  placeholder?: string;
+  required?: boolean;
+  isUnlocked: boolean;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onToggleLock: (fieldName: string) => void;
+}
+
+const FieldWithLock = ({
+  name,
+  label,
+  type = "text",
+  placeholder,
+  required = false,
+  isUnlocked,
+  value,
+  onChange,
+  onToggleLock,
+}: FieldWithLockProps) => {
+  // Convert name to string for htmlFor and id attributes
+  const fieldId = String(name);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <Label htmlFor={fieldId}>
+          {label} {required && <span className="text-red-500">*</span>}
+        </Label>
+        <button
+          type="button"
+          onClick={() => onToggleLock(fieldId)}
+          className={`p-1 rounded transition-colors ${
+            isUnlocked
+              ? "text-green-600 hover:bg-green-50"
+              : "text-gray-400 hover:bg-gray-100"
+          }`}
+          title={isUnlocked ? "Lock field" : "Unlock to edit"}
+        >
+          {isUnlocked ? (
+            <Unlock className="w-4 h-4" />
+          ) : (
+            <Lock className="w-4 h-4" />
+          )}
+        </button>
+      </div>
+      <Input
+        id={fieldId}
+        name={fieldId}
+        type={type}
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        disabled={!isUnlocked}
+        className={!isUnlocked ? "bg-gray-50 cursor-not-allowed" : ""}
+      />
+    </div>
+  );
+};
+
 export default function EditEmployeeForm({
   employee,
   onClose,
@@ -39,7 +118,7 @@ export default function EditEmployeeForm({
   const [unlockedFields, setUnlockedFields] = useState<Set<string>>(new Set());
 
   // Track changed values
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     _id: employee._id,
     name: employee.name,
     email: employee.email,
@@ -81,11 +160,12 @@ export default function EditEmployeeForm({
 
     try {
       // Only send changed fields
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const updateData: any = { _id: employee._id };
 
       // Add only unlocked fields that have changed
       unlockedFields.forEach((fieldName) => {
-        const currentValue = formData[fieldName as keyof typeof formData];
+        const currentValue = formData[fieldName as keyof FormData];
         const originalValue = employee[fieldName as keyof Employee];
 
         // Only include if value has actually changed
@@ -114,57 +194,6 @@ export default function EditEmployeeForm({
         "Failed to update employee.";
       setError(errorMessage);
     }
-  };
-
-  const FieldWithLock = ({
-    name,
-    label,
-    type = "text",
-    placeholder,
-    required = false,
-  }: {
-    name: keyof typeof formData;
-    label: string;
-    type?: string;
-    placeholder?: string;
-    required?: boolean;
-  }) => {
-    const isUnlocked = unlockedFields.has(name);
-    return (
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label htmlFor={name}>
-            {label} {required && <span className="text-red-500">*</span>}
-          </Label>
-          <button
-            type="button"
-            onClick={() => toggleFieldLock(name)}
-            className={`p-1 rounded transition-colors ${
-              isUnlocked
-                ? "text-green-600 hover:bg-green-50"
-                : "text-gray-400 hover:bg-gray-100"
-            }`}
-            title={isUnlocked ? "Lock field" : "Unlock to edit"}
-          >
-            {isUnlocked ? (
-              <Unlock className="w-4 h-4" />
-            ) : (
-              <Lock className="w-4 h-4" />
-            )}
-          </button>
-        </div>
-        <Input
-          id={name}
-          name={name}
-          type={type}
-          placeholder={placeholder}
-          value={formData[name] as string}
-          onChange={handleChange}
-          disabled={!isUnlocked}
-          className={!isUnlocked ? "bg-gray-50 cursor-not-allowed" : ""}
-        />
-      </div>
-    );
   };
 
   return (
@@ -198,7 +227,10 @@ export default function EditEmployeeForm({
                 name="name"
                 label="Full Name"
                 placeholder="John Doe"
-                required
+                isUnlocked={unlockedFields.has("name")}
+                value={formData.name}
+                onChange={handleChange}
+                onToggleLock={toggleFieldLock}
               />
 
               <FieldWithLock
@@ -206,7 +238,10 @@ export default function EditEmployeeForm({
                 label="Email Address"
                 type="email"
                 placeholder="john@example.com"
-                required
+                isUnlocked={unlockedFields.has("email")}
+                value={formData.email}
+                onChange={handleChange}
+                onToggleLock={toggleFieldLock}
               />
 
               <FieldWithLock
@@ -214,15 +249,23 @@ export default function EditEmployeeForm({
                 label="Password"
                 type="password"
                 placeholder="Leave blank to keep current"
+                isUnlocked={unlockedFields.has("password")}
+                value={formData.password}
+                onChange={handleChange}
+                onToggleLock={toggleFieldLock}
               />
 
               <FieldWithLock
                 name="phone"
                 label="Phone Number"
                 placeholder="+1 234 567 890"
-                required
+                isUnlocked={unlockedFields.has("phone")}
+                value={formData.phone}
+                onChange={handleChange}
+                onToggleLock={toggleFieldLock}
               />
 
+              {/* Role Field (Select) */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="role">
@@ -272,19 +315,30 @@ export default function EditEmployeeForm({
                 name="position"
                 label="Position"
                 placeholder="e.g. Marketing Manager"
+                isUnlocked={unlockedFields.has("position")}
+                value={formData.position}
+                onChange={handleChange}
+                onToggleLock={toggleFieldLock}
               />
 
               <FieldWithLock
                 name="employer_id"
                 label="Employer ID"
                 placeholder="EMP-001"
-                required
+                isUnlocked={unlockedFields.has("employer_id")}
+                value={formData.employer_id}
+                onChange={handleChange}
+                onToggleLock={toggleFieldLock}
               />
 
               <FieldWithLock
                 name="secondaryPhoneNumber"
                 label="Secondary Phone"
                 placeholder="+1 987 654 321"
+                isUnlocked={unlockedFields.has("secondaryPhoneNumber")}
+                value={formData.secondaryPhoneNumber}
+                onChange={handleChange}
+                onToggleLock={toggleFieldLock}
               />
             </div>
 
@@ -292,6 +346,10 @@ export default function EditEmployeeForm({
               name="address"
               label="Address"
               placeholder="123 Main St, City, Country"
+              isUnlocked={unlockedFields.has("address")}
+              value={formData.address}
+              onChange={handleChange}
+              onToggleLock={toggleFieldLock}
             />
 
             {/* Active Status Toggle */}
