@@ -1,38 +1,122 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Button } from "@/_components/ui/button";
+import Button from "@/components/ui/button/Button";
 import { Plus } from "lucide-react";
 import Link from "next/link";
-import EmployeeList from "@/components/employee/EmployeeList";
+import {
+  useGetEmployeesQuery,
+  useGetEmployeesSuperAdminQuery,
+  useDeleteEmployeeMutation,
+} from "@/redux/Features/employee/employeeApi";
+import EmployeeTable from "@/components/employee/EmployeeTable";
+import EmployeeFilters from "@/components/employee/EmployeeFilters";
+import Pagination from "@/components/ui/Pagination";
+import EmployeeDetailsModal from "@/components/employee/EmployeeDetailsModal";
+import { toast } from "react-hot-toast";
 
 export default function EmployeesPage() {
   const [role, setRole] = useState<string>("");
   const [activeTab, setActiveTab] = useState<"normal" | "super">("normal");
-  const [totalCount, setTotalCount] = useState(0);
+
+  // Filter State
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [search, setSearch] = useState("");
+  const [isActive, setIsActive] = useState<boolean | string>(true);
+  const [sort, setSort] = useState("createdAt");
+  const [order, setOrder] = useState("desc");
+
+  // Modal State
+  const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Fetch Data
+  const queryParams = {
+    page,
+    limit,
+    search,
+    isActive,
+    sort,
+    order,
+  };
+
+  const {
+    data: normalData,
+    isLoading: isNormalLoading,
+    refetch: refetchNormal,
+  } = useGetEmployeesQuery(queryParams, {
+    skip: activeTab !== "normal",
+  });
+
+  const {
+    data: superData,
+    isLoading: isSuperLoading,
+    refetch: refetchSuper,
+  } = useGetEmployeesSuperAdminQuery(queryParams, {
+    skip: activeTab !== "super",
+  });
+
+  const [deleteEmployee] = useDeleteEmployeeMutation();
 
   useEffect(() => {
-    // Get user role from localStorage
     const userStr = localStorage.getItem("user");
     if (userStr) {
       try {
         const user = JSON.parse(userStr);
         setRole(user.role || "");
       } catch (e) {
-        console.error("Failed to parse user from local storage", e);
+        console.error("Failed to parse user", e);
       }
     }
   }, []);
 
   const isSuperAdmin = role === "superAdmin";
 
-  if (!role) {
-    return (
-      <div className="p-8 flex justify-center">
-        <div className="animate-pulse text-gray-500">Loading...</div>
-      </div>
-    );
-  }
+  // Handle Tab Change
+  const handleTabChange = (tab: "normal" | "super") => {
+    setActiveTab(tab);
+    setPage(1); // Reset page on tab change
+    setSearch(""); // Optional: reset filters
+  };
+
+  // Handle Search
+  const handleSearch = () => {
+    setPage(1);
+    if (activeTab === "normal") refetchNormal();
+    else refetchSuper();
+  };
+
+  // Handle View
+  const handleView = (email: string) => {
+    setSelectedEmail(email);
+    setIsModalOpen(true);
+  };
+
+  // Handle Delete
+  const handleDelete = async (id: string) => {
+    if (window.confirm("Are you sure you want to delete this employee?")) {
+      try {
+        await deleteEmployee(id).unwrap();
+        toast.success("Employee deleted successfully");
+      } catch (err) {
+        toast.error("Failed to delete employee");
+        console.error(err);
+      }
+    }
+  };
+
+  // Normalize Data
+  const currentData = activeTab === "normal" ? normalData : superData;
+  const employees = currentData?.data?.employer || [];
+  const pagination = currentData?.data?.pagination || {
+    page: 1,
+    totalPages: 1,
+    hasNextPage: false,
+    hasPrevPage: false,
+  };
+
+  if (!role) return <div className="p-8 text-center">Loading...</div>;
 
   if (!isSuperAdmin) {
     return (
@@ -54,8 +138,7 @@ export default function EmployeesPage() {
         </div>
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
         <p className="text-gray-500 max-w-md">
-          You do not have permission to view this page. Only Super Admins can
-          manage employees.
+          Only Super Admins can manage employees.
         </p>
       </div>
     );
@@ -65,12 +148,7 @@ export default function EmployeesPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <div className="flex items-center gap-3">
-            <h2 className="text-3xl font-bold tracking-tight">Employees</h2>
-            <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-              Total: {totalCount}
-            </span>
-          </div>
+          <h2 className="text-3xl font-bold tracking-tight">Employees</h2>
           <p className="text-muted-foreground">
             Manage your organization&apos;s staff members.
           </p>
@@ -85,23 +163,23 @@ export default function EmployeesPage() {
 
       {/* Tabs */}
       <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+        <nav className="-mb-px flex space-x-8">
           <button
-            onClick={() => setActiveTab("normal")}
+            onClick={() => handleTabChange("normal")}
             className={`${
               activeTab === "normal"
                 ? "border-blue-500 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                : "border-transparent text-gray-500 hover:text-gray-700"
             } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
           >
             Employees
           </button>
           <button
-            onClick={() => setActiveTab("super")}
+            onClick={() => handleTabChange("super")}
             className={`${
               activeTab === "super"
                 ? "border-blue-500 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                : "border-transparent text-gray-500 hover:text-gray-700"
             } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
           >
             Super Admins
@@ -109,7 +187,45 @@ export default function EmployeesPage() {
         </nav>
       </div>
 
-      <EmployeeList listType={activeTab} onTotalCountChange={setTotalCount} />
+      {/* Filters */}
+      <EmployeeFilters
+        search={search}
+        setSearch={setSearch}
+        limit={limit}
+        setLimit={setLimit}
+        isActive={isActive}
+        setIsActive={setIsActive}
+        sort={sort}
+        setSort={setSort}
+        order={order}
+        setOrder={setOrder}
+        onSearch={handleSearch}
+      />
+
+      {/* Table */}
+      <EmployeeTable
+        employees={employees}
+        isLoading={activeTab === "normal" ? isNormalLoading : isSuperLoading}
+        onView={handleView}
+        onDelete={handleDelete}
+        isSuperAdmin={isSuperAdmin}
+      />
+
+      {/* Pagination */}
+      <Pagination
+        currentPage={page}
+        totalPages={pagination.totalPages}
+        onPageChange={setPage}
+        hasNextPage={pagination.hasNextPage}
+        hasPrevPage={pagination.hasPrevPage}
+      />
+
+      {/* Details Modal */}
+      <EmployeeDetailsModal
+        email={selectedEmail}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
     </div>
   );
 }

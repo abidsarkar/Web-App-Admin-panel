@@ -42,7 +42,10 @@ export const createEmployerSchema = z.object({
     .min(1, { message: "employer_id cannot be empty" })
     .max(20, { message: "employer_id must be under 20 character" }),
   role: z
-    .union([z.enum(["subAdmin", "superAdmin","editor", "undefined"]), z.undefined()])
+    .union([
+      z.enum(["subAdmin", "superAdmin", "editor", "undefined"]),
+      z.undefined(),
+    ])
     .optional(), //! this is for optional check if not come from body zod ignore
   isActive: z
     .preprocess((val) => {
@@ -91,7 +94,10 @@ export const updateEmployerSchema = z.object({
     .max(20, { message: "employer_id must be under 20 character" })
     .optional(),
   role: z
-    .union([z.enum(["subAdmin", "superAdmin","editor", "undefined"]), z.undefined()])
+    .union([
+      z.enum(["subAdmin", "superAdmin", "editor", "undefined"]),
+      z.undefined(),
+    ])
     .optional(), //! this is for optional check if not come from body zod ignore
   isActive: z
     .preprocess((val) => {
@@ -104,7 +110,7 @@ export const updateEmployerSchema = z.object({
 });
 
 export const getEmployerInfoSchema = z.object({
-  _id:z.string().trim().optional(),
+  _id: z.string().trim().optional(),
   email: z.string().trim().email().optional(),
   employer_id: z.string().trim().optional(),
 });
@@ -122,6 +128,7 @@ export const getAllEmployerInfoSchema = z.object({
   isActive: z.preprocess((val) => {
     if (val === "true") return true;
     if (val === "false") return false;
+    if (val === "") return undefined;
     return val;
   }, z.boolean().optional()), // optional filter
   sort: z.string().optional(), // e.g. "createdAt"

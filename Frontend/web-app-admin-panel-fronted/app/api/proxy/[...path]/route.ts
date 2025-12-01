@@ -15,8 +15,6 @@ export async function proxyRequest(
   const path = params.path.join("/");
   const targetUrl = `${BACKEND_URL}/${path}${request.nextUrl.search}`;
 
-  console.log("🍪 PROXY → Incoming Cookies:", request.headers.get("cookie"));
-
   // Prepare headers for backend fetch
   const headers = new Headers(request.headers);
   headers.delete("host");
@@ -57,11 +55,8 @@ export async function proxyRequest(
     backendResponse.headers.forEach((value, key) => {
       if (key.toLowerCase() === "set-cookie") {
         setCookies.push(value);
-        console.log("🎯 Backend Set-Cookie →", value);
       }
     });
-
-    console.log("🍪 Total cookies received:", setCookies.length);
 
     // Parse Set-Cookie headers into structured objects
     const parsedCookies = processSetCookieHeaders(setCookies);
@@ -72,16 +67,10 @@ export async function proxyRequest(
         const options = toNextResponseCookieOptions(cookie);
 
         proxyResponse.cookies.set(cookie.name, cookie.value, options);
-
-        console.log(`✅ Cookie forwarded: ${cookie.name}`);
       } catch (err) {
         console.error(`❌ Failed to set ${cookie.name}:`, err);
       }
     });
-
-    // Debug final cookies sent to browser
-    const finalCookies = proxyResponse.cookies.getAll();
-    console.log("🍪 Final cookies in browser:", finalCookies);
 
     return proxyResponse;
   } catch (error) {

@@ -8,6 +8,7 @@ export const employeeApi = baseApi.injectEndpoints({
         return `/employee/get-all?${queryString}`;
       },
       providesTags: ["Employee"],
+      keepUnusedDataFor: 0,
     }),
     getEmployeesSuperAdmin: builder.query({
       query: (params) => {
@@ -15,6 +16,14 @@ export const employeeApi = baseApi.injectEndpoints({
         return `/employee/get-all-sup?${queryString}`;
       },
       providesTags: ["Employee"],
+      keepUnusedDataFor: 0,
+    }),
+    getEmployeeDetails: builder.mutation({
+      query: (email) => ({
+        url: "/employee/get",
+        method: "POST",
+        body: { email },
+      }),
     }),
     createEmployee: builder.mutation({
       query: (formData) => ({
@@ -38,6 +47,7 @@ export const employeeApi = baseApi.injectEndpoints({
 export const {
   useGetEmployeesQuery,
   useGetEmployeesSuperAdminQuery,
+  useGetEmployeeDetailsMutation,
   useCreateEmployeeMutation,
   useDeleteEmployeeMutation,
 } = employeeApi;

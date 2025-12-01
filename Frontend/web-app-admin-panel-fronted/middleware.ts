@@ -1,7 +1,13 @@
 // middleware.ts
 import { NextResponse, NextRequest } from "next/server";
 
-const PROTECTED_ROUTES = ["/dashboard", "/products", "/orders", "/customers"];
+const PROTECTED_ROUTES = [
+  "/",
+  "/dashboard",
+  "/products",
+  "/orders",
+  "/customers",
+];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -18,6 +24,9 @@ export async function middleware(request: NextRequest) {
 
   // 2️⃣ If user has accessToken → allow access
   if (accessToken) {
+    if (pathname === "/") {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
     return NextResponse.next();
   }
 
@@ -26,7 +35,10 @@ export async function middleware(request: NextRequest) {
     const refreshed = await refreshTokens(request);
 
     if (refreshed) {
-      const response = NextResponse.next();
+      const response =
+        pathname === "/"
+          ? NextResponse.redirect(new URL("/dashboard", request.url))
+          : NextResponse.next();
 
       // Set ALL cookies returned from backend
       refreshed.cookies.forEach((cookie) => {
@@ -84,6 +96,7 @@ async function refreshTokens(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/",
     "/dashboard/:path*",
     "/products/:path*",
     "/orders/:path*",
