@@ -94,10 +94,11 @@ export default function EmployeesPage() {
   };
 
   // Handle Delete
-  const handleDelete = async (id: string) => {
+  // Handle Delete
+  const handleDelete = async (data: { email: string; employer_id: string }) => {
     if (window.confirm("Are you sure you want to delete this employee?")) {
       try {
-        await deleteEmployee(id).unwrap();
+        await deleteEmployee(data).unwrap();
         toast.success("Employee deleted successfully");
       } catch (err) {
         toast.error("Failed to delete employee");

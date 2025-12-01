@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useCreateEmployeeMutation } from "@/redux/features/employee/employeeApi";
+import { useCreateEmployeeMutation } from "@/redux/Features/employee/employeeApi";
 import { Button } from "@/_components/ui/button";
 import { Input } from "@/_components/ui/input";
 import { Label } from "@/_components/ui/label";
@@ -148,8 +148,10 @@ export default function CreateEmployeePage() {
               onChange={handleChange}
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
+              <option value="superAdmin">Super Admin</option>
               <option value="subAdmin">Sub Admin</option>
               <option value="editor">Editor</option>
+              <option value="undefined">Undefined</option>
             </select>
           </div>
 

@@ -14,13 +14,14 @@ interface Employee {
     filePathURL: string;
   };
   createdAt?: string;
+  employer_id: string;
 }
 
 interface EmployeeTableProps {
   employees: Employee[];
   isLoading: boolean;
   onView: (email: string) => void;
-  onDelete: (id: string) => void;
+  onDelete: (data: { email: string; employer_id: string }) => void;
   isSuperAdmin: boolean;
 }
 
@@ -141,7 +142,12 @@ export default function EmployeeTable({
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => onDelete(employee._id)}
+                        onClick={() =>
+                          onDelete({
+                            email: employee.email,
+                            employer_id: employee.employer_id,
+                          })
+                        }
                         className="text-red-600 hover:text-red-700 hover:bg-red-50 border-transparent hover:border-red-200"
                       >
                         <Trash2 className="w-4 h-4" />

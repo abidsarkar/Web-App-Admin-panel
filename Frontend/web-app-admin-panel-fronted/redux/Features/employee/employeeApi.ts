@@ -31,10 +31,9 @@ export const employeeApi = baseApi.injectEndpoints({
       invalidatesTags: ["Employee"],
     }),
     deleteEmployee: builder.mutation({
-      query: (id) => ({
-        url: "/employee/delete",
+      query: ({ email, employer_id }) => ({
+        url: `/employee/delete?email=${email}&employer_id=${employer_id}`,
         method: "DELETE",
-        body: { id },
       }),
       invalidatesTags: ["Employee"],
     }),
