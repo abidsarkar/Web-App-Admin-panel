@@ -13,6 +13,7 @@ import EmployeeTable from "@/components/employee/EmployeeTable";
 import EmployeeFilters from "@/components/employee/EmployeeFilters";
 import Pagination from "@/components/ui/Pagination";
 import EmployeeDetailsModal from "@/components/employee/EmployeeDetailsModal";
+import EditEmployeeForm from "@/components/employee/EditEmployeeForm";
 import { toast } from "react-hot-toast";
 
 export default function EmployeesPage() {
@@ -30,6 +31,8 @@ export default function EmployeesPage() {
   // Modal State
   const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // Fetch Data
   const queryParams = {
@@ -91,6 +94,12 @@ export default function EmployeesPage() {
   const handleView = (email: string) => {
     setSelectedEmail(email);
     setIsModalOpen(true);
+  };
+
+  // Handle Edit
+  const handleEdit = (employee: any) => {
+    setSelectedEmployee(employee);
+    setIsEditModalOpen(true);
   };
 
   // Handle Delete
@@ -208,6 +217,7 @@ export default function EmployeesPage() {
         employees={employees}
         isLoading={activeTab === "normal" ? isNormalLoading : isSuperLoading}
         onView={handleView}
+        onEdit={handleEdit}
         onDelete={handleDelete}
         isSuperAdmin={isSuperAdmin}
       />
@@ -226,7 +236,23 @@ export default function EmployeesPage() {
         email={selectedEmail}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        onEdit={handleEdit}
       />
+
+      {/* Edit Modal */}
+      {isEditModalOpen && selectedEmployee && (
+        <EditEmployeeForm
+          employee={selectedEmployee}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setSelectedEmployee(null);
+          }}
+          onSuccess={() => {
+            if (activeTab === "normal") refetchNormal();
+            else refetchSuper();
+          }}
+        />
+      )}
     </div>
   );
 }

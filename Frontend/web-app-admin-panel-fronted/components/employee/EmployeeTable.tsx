@@ -1,5 +1,5 @@
 import Button from "@/components/ui/button/Button";
-import { Eye, Trash2 } from "lucide-react";
+import { Eye, Trash2, Edit } from "lucide-react";
 import Image from "next/image";
 
 interface Employee {
@@ -21,6 +21,7 @@ interface EmployeeTableProps {
   employees: Employee[];
   isLoading: boolean;
   onView: (email: string) => void;
+  onEdit: (employee: Employee) => void;
   onDelete: (data: { email: string; employer_id: string }) => void;
   isSuperAdmin: boolean;
 }
@@ -29,6 +30,7 @@ export default function EmployeeTable({
   employees,
   isLoading,
   onView,
+  onEdit,
   onDelete,
   isSuperAdmin,
 }: EmployeeTableProps) {
@@ -139,19 +141,29 @@ export default function EmployeeTable({
                       <Eye className="w-4 h-4" />
                     </Button>
                     {isSuperAdmin && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          onDelete({
-                            email: employee.email,
-                            employer_id: employee.employer_id,
-                          })
-                        }
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50 border-transparent hover:border-red-200"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onEdit(employee)}
+                          className="text-green-600 hover:text-green-700 hover:bg-green-50 border-transparent hover:border-green-200"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            onDelete({
+                              email: employee.email,
+                              employer_id: employee.employer_id,
+                            })
+                          }
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 border-transparent hover:border-red-200"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </>
                     )}
                   </div>
                 </td>

@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
+import { X, Edit } from "lucide-react";
 import Image from "next/image";
 import { useLazyGetEmployeeDetailsQuery } from "@/redux/Features/employee/employeeApi";
 import { useEffect } from "react";
@@ -10,12 +10,15 @@ interface EmployeeDetailsModalProps {
   email: string | null;
   isOpen: boolean;
   onClose: () => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onEdit?: (employee: any) => void;
 }
 
 export default function EmployeeDetailsModal({
   email,
   isOpen,
   onClose,
+  onEdit,
 }: EmployeeDetailsModalProps) {
   const [getEmployeeDetails, { isLoading, data, error }] =
     useLazyGetEmployeeDetailsQuery();
@@ -132,6 +135,21 @@ export default function EmployeeDetailsModal({
                 </p>
               </div>
             </div>
+
+            {onEdit && (
+              <div className="mt-6 pt-6 border-t border-gray-200 flex justify-end">
+                <button
+                  onClick={() => {
+                    onEdit(employee);
+                    onClose();
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors"
+                >
+                  <Edit className="w-4 h-4" />
+                  Edit Employee
+                </button>
+              </div>
+            )}
           </div>
         ) : null}
       </div>

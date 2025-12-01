@@ -30,6 +30,14 @@ export const employeeApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Employee"],
     }),
+    updateEmployee: builder.mutation({
+      query: (formData) => ({
+        url: "/employee/update",
+        method: "PATCH",
+        body: formData,
+      }),
+      invalidatesTags: ["Employee"],
+    }),
     deleteEmployee: builder.mutation({
       query: ({ email, employer_id }) => ({
         url: `/employee/delete?email=${email}&employer_id=${employer_id}`,
@@ -45,5 +53,6 @@ export const {
   useGetEmployeesSuperAdminQuery,
   useLazyGetEmployeeDetailsQuery,
   useCreateEmployeeMutation,
+  useUpdateEmployeeMutation,
   useDeleteEmployeeMutation,
 } = employeeApi;

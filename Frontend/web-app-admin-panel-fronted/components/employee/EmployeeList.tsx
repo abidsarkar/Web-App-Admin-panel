@@ -5,13 +5,13 @@ import {
   useGetEmployeesQuery,
   useGetEmployeesSuperAdminQuery,
   useDeleteEmployeeMutation,
-} from "@/redux/features/employee/employeeApi";
+} from "@/redux/Features/employee/employeeApi";
 import { Button } from "@/_components/ui/button";
 import { Trash2, Edit, Eye, Search } from "lucide-react";
 import { Input } from "@/_components/ui/input";
 import { Spinner } from "@/_components/ui/spinner";
 import Image from "next/image";
-import EmployeeDetailsModal from "@/app/dashboard/employees/employee-details-modal";
+import EmployeeDetailsModal from "@/components/employee/employee-details-modal";
 
 interface Employee {
   _id: string;
