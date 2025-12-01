@@ -21,9 +21,7 @@ import {
   updateEmployerProfilePicController,
 } from "./managedEmployer.controller";
 import { adminRoleCheckMiddleware } from "../../middlewares/roleGuard";
-import {
-  profilePictureUpload,
-} from "../../multer/multer.upload";
+import { profilePictureUpload } from "../../multer/multer.upload";
 
 router.post(
   "/create",
@@ -67,7 +65,7 @@ router.delete(
 router.get(
   "/export-employees",
   adminRoleCheckMiddleware("superAdmin"),
-  verifyAccessTokenMiddleware, 
+  verifyAccessTokenMiddleware,
   exportAllEmployeesController
 );
 export const employeeManagementRouts = router;

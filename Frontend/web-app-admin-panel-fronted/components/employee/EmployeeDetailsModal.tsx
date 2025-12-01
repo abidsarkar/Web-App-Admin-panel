@@ -2,7 +2,7 @@
 
 import { X } from "lucide-react";
 import Image from "next/image";
-import { useGetEmployeeDetailsMutation } from "@/redux/Features/employee/employeeApi";
+import { useLazyGetEmployeeDetailsQuery } from "@/redux/Features/employee/employeeApi";
 import { useEffect } from "react";
 import { Spinner } from "@/_components/ui/spinner";
 
@@ -18,7 +18,7 @@ export default function EmployeeDetailsModal({
   onClose,
 }: EmployeeDetailsModalProps) {
   const [getEmployeeDetails, { isLoading, data, error }] =
-    useGetEmployeeDetailsMutation();
+    useLazyGetEmployeeDetailsQuery();
 
   const employee = data?.data?.employer || null;
 

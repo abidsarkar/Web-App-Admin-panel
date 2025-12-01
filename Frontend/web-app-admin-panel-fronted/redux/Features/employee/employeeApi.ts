@@ -18,12 +18,9 @@ export const employeeApi = baseApi.injectEndpoints({
       providesTags: ["Employee"],
       keepUnusedDataFor: 0,
     }),
-    getEmployeeDetails: builder.mutation({
-      query: (email) => ({
-        url: "/employee/get",
-        method: "POST",
-        body: { email },
-      }),
+    getEmployeeDetails: builder.query({
+      query: (email) => `/employee/get?email=${email}`,
+      keepUnusedDataFor: 0,
     }),
     createEmployee: builder.mutation({
       query: (formData) => ({
@@ -47,7 +44,7 @@ export const employeeApi = baseApi.injectEndpoints({
 export const {
   useGetEmployeesQuery,
   useGetEmployeesSuperAdminQuery,
-  useGetEmployeeDetailsMutation,
+  useLazyGetEmployeeDetailsQuery,
   useCreateEmployeeMutation,
   useDeleteEmployeeMutation,
 } = employeeApi;

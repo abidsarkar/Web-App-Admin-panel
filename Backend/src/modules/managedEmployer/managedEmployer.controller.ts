@@ -74,7 +74,7 @@ export const createEmployerController = catchAsync(
 
 export const getEmployerInfoController = catchAsync(
   async (req: Request, res: Response) => {
-    const parsed = getEmployerInfoSchema.safeParse(req.body);
+    const parsed = getEmployerInfoSchema.safeParse(req.query);
     if (!parsed.success) {
       return res.status(httpStatus.BAD_REQUEST).json({
         success: false,
@@ -137,7 +137,7 @@ export const getAllEmployerInfoController = catchAsync(
       error,
       data: {
         accessToken: data?.accessToken,
-        pagination:data?.pagination,
+        pagination: data?.pagination,
         employer: data?.employees,
         user: data?.user,
       },
@@ -173,7 +173,7 @@ export const getAllSupAdminEmployerInfoController = catchAsync(
       error,
       data: {
         accessToken: data?.accessToken,
-        pagination:data?.pagination,
+        pagination: data?.pagination,
         employer: data?.employees,
         user: data?.user,
       },
@@ -190,7 +190,7 @@ export const updateEmployerInfoController = catchAsync(
         errors: z.treeifyError(parsed.error),
       });
     }
-   
+
     const admin_id = req.user?.id; //supper admin id form accessToken
     const admin_role = req.user?.role; //supper admin role form accessToken
     const admin_email = req.user?.email; //supper admin email form accessToken
@@ -226,7 +226,7 @@ export const updateEmployerProfilePicController = catchAsync(
         errors: z.treeifyError(parsed.error),
       });
     }
-    const emailAndIdData = getEmployerInfoSchema.safeParse(req.body);//verify email and id
+    const emailAndIdData = getEmployerInfoSchema.safeParse(req.body); //verify email and id
     if (!emailAndIdData.success) {
       return res.status(httpStatus.BAD_REQUEST).json({
         success: false,
@@ -234,8 +234,8 @@ export const updateEmployerProfilePicController = catchAsync(
         errors: z.treeifyError(emailAndIdData.error),
       });
     }
-    
-   const {...parsedFile} = req.file;
+
+    const { ...parsedFile } = req.file;
     const admin_id = req.user?.id; //supper admin id form accessToken
     const admin_role = req.user?.role; //supper admin role form accessToken
     const admin_email = req.user?.email; //supper admin email form accessToken
@@ -319,12 +319,20 @@ export const exportAllEmployeesController = catchAsync(
     }
 
     // Ensure buffer is properly typed
-    const fileBuffer = Buffer.isBuffer(data.buffer) ? data.buffer : Buffer.from(data.buffer);
+    const fileBuffer = Buffer.isBuffer(data.buffer)
+      ? data.buffer
+      : Buffer.from(data.buffer);
 
     // Set headers for file download
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=${data.fileName}`);
-    res.setHeader('Content-Length', fileBuffer.length);
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=${data.fileName}`
+    );
+    res.setHeader("Content-Length", fileBuffer.length);
 
     // Send access token in cookie
     sendAccessCookie(res, data.accessToken);
