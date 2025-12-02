@@ -1,3 +1,4 @@
+import { FRONTEND_URL } from "./../../config/envConfig";
 import { Response } from "express";
 import { EmployerInfo } from "./auth.model";
 import {
@@ -20,6 +21,7 @@ export const sendRefreshCookie = (
     sameSite: "strict", // Helps prevent CSRF attacks
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     path: "/",
+    //domain: process.env.FF,
   }); // Set the cookie
 };
 export const sendAccessCookie = (
@@ -32,7 +34,8 @@ export const sendAccessCookie = (
     secure: process.env.NODE_ENV === "production", // Only set cookie over HTTPS in production
     sameSite: "strict", // Helps prevent CSRF attacks
     maxAge: 60 * 60 * 1000, // 1 hour
-     path: "/",
+    path: "/",
+    //domain: process.env.FF,
   }); // Set the cookie
 };
 export const sendForgotPasswordCookie = (
@@ -45,7 +48,8 @@ export const sendForgotPasswordCookie = (
     secure: NODE_ENV === "production", // Only set cookie over HTTPS in production
     sameSite: "strict", // Helps prevent CSRF attacks
     maxAge: 5 * 60 * 1000, // 5 minutes
-     path: "/",
+    path: "/",
+    //domain: process.env.FF,
   }); // Set the cookie
 };
 export const generateOTP = (): string => {
