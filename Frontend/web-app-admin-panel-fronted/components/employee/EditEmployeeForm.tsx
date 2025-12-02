@@ -468,7 +468,9 @@ export default function EditEmployeeForm({
               </Button>
               <Button
                 type="submit"
-                disabled={isLoading || unlockedFields.size === 0}
+                disabled={
+                  isLoading || (unlockedFields.size === 0 && !selectedFile)
+                }
                 className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
@@ -476,6 +478,12 @@ export default function EditEmployeeForm({
                     <Spinner className="w-4 h-4 mr-2" />
                     Updating...
                   </>
+                ) : selectedFile && unlockedFields.size > 0 ? (
+                  `Update Picture & ${unlockedFields.size} Field${
+                    unlockedFields.size !== 1 ? "s" : ""
+                  }`
+                ) : selectedFile ? (
+                  "Update Profile Picture"
                 ) : (
                   `Update ${unlockedFields.size} Field${
                     unlockedFields.size !== 1 ? "s" : ""
