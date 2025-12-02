@@ -4,7 +4,7 @@ import { useState } from "react";
 import {
   useGetProductsQuery,
   useDeleteProductMutation,
-} from "@/redux/features/product/productApi";
+} from "@/redux/Features/product/productApi";
 import { Button } from "@/_components/ui/button";
 import { Plus, Trash2, Edit, Search, ShoppingBag } from "lucide-react";
 import Link from "next/link";
