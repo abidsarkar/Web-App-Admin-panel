@@ -10,6 +10,9 @@ const nextConfig: NextConfig = {
         pathname: "/public/**",
       },
     ],
+    // Allow localhost images (bypasses private IP restriction)
+    dangerouslyAllowSVG: true,
+    unoptimized: process.env.NODE_ENV === "development",
   },
 };
 

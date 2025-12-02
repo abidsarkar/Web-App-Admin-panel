@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Button from "@/components/ui/button/Button";
-import { Plus } from "lucide-react";
+import { Plus, Download } from "lucide-react";
 import Link from "next/link";
 import {
   useGetEmployeesQuery,
@@ -116,6 +116,41 @@ export default function EmployeesPage() {
     }
   };
 
+  // Handle Export
+  const handleExport = async () => {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/employee/export-employees`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          // Ensure cookies are sent with the request
+          credentials: "include",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to export employees");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "employees.xlsx"; // Or .csv depending on backend
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success("Employees exported successfully");
+    } catch (err) {
+      console.error("Export failed:", err);
+      toast.error("Failed to export employees");
+    }
+  };
+
   // Normalize Data
   const currentData = activeTab === "normal" ? normalData : superData;
   const employees = currentData?.data?.employer || [];
@@ -169,6 +204,13 @@ export default function EmployeesPage() {
             Add Employee
           </Button>
         </Link>
+        <Button
+          onClick={handleExport}
+          className="bg-green-600 hover:bg-green-500"
+        >
+          <Download className="w-4 h-4 mr-2" />
+          Export Employees
+        </Button>
       </div>
 
       {/* Tabs */}

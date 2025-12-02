@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import Button from "@/components/ui/button/Button";
 import Input from "@/components/form/input/InputField";
 import { Search } from "lucide-react";
@@ -29,6 +30,24 @@ export default function EmployeeFilters({
   setOrder,
   onSearch,
 }: EmployeeFiltersProps) {
+  const [localSearch, setLocalSearch] = useState(search);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(localSearch);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [localSearch, setSearch]);
+
+  // Sync local state if parent search changes externally (e.g. reset)
+  useEffect(() => {
+    if (search !== localSearch) {
+      setLocalSearch(search);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
+
   return (
     <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
@@ -40,11 +59,14 @@ export default function EmployeeFilters({
           <div className="flex gap-2">
             <Input
               placeholder="Search by name, email..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
             />
             <Button
-              onClick={onSearch}
+              onClick={() => {
+                setSearch(localSearch);
+                onSearch();
+              }}
               className="bg-blue-600 hover:bg-blue-500"
             >
               <Search className="w-4 h-4" />

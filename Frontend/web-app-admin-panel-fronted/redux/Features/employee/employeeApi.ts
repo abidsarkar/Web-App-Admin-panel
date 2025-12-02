@@ -46,6 +46,7 @@ export const employeeApi = baseApi.injectEndpoints({
       invalidatesTags: ["Employee"],
     }),
   }),
+  overrideExisting: true,
 });
 
 export const {

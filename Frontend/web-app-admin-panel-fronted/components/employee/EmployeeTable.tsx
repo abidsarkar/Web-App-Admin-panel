@@ -1,6 +1,6 @@
 import Button from "@/components/ui/button/Button";
 import { Eye, Trash2, Edit } from "lucide-react";
-import Image from "next/image";
+import ProfileImage from "@/components/ui/ProfileImage";
 
 interface Employee {
   _id: string;
@@ -89,14 +89,13 @@ export default function EmployeeTable({
                 <td className="px-6 py-4">
                   <div className="relative h-10 w-10 overflow-hidden rounded-full border border-gray-200">
                     {employee.profilePicture?.filePathURL ? (
-                      <Image
+                      <ProfileImage
                         src={`http://localhost:5001/${employee.profilePicture.filePathURL.replace(
                           /^\.?\/?/,
                           ""
                         )}`}
                         alt={employee.name}
-                        fill
-                        className="object-cover"
+                        className="h-full w-full object-cover"
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-blue-50 text-xs font-bold text-blue-600">
