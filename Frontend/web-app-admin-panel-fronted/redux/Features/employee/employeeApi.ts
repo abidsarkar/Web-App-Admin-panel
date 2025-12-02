@@ -38,12 +38,26 @@ export const employeeApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Employee"],
     }),
+    updateProfilePicture: builder.mutation({
+      query: (formData) => ({
+        url: "/employee/update-profile-pic",
+        method: "PATCH",
+        body: formData,
+      }),
+      invalidatesTags: ["Employee"],
+    }),
     deleteEmployee: builder.mutation({
       query: ({ email, employer_id }) => ({
         url: `/employee/delete?email=${email}&employer_id=${employer_id}`,
         method: "DELETE",
       }),
       invalidatesTags: ["Employee"],
+    }),
+    exportEmployees: builder.query({
+      query: () => ({
+        url: "/employee/export-employees",
+        responseHandler: (response) => response.blob(),
+      }),
     }),
   }),
   overrideExisting: true,
@@ -55,5 +69,7 @@ export const {
   useLazyGetEmployeeDetailsQuery,
   useCreateEmployeeMutation,
   useUpdateEmployeeMutation,
+  useUpdateProfilePictureMutation,
   useDeleteEmployeeMutation,
+  useLazyExportEmployeesQuery,
 } = employeeApi;

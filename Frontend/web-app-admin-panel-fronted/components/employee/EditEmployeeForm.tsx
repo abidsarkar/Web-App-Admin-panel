@@ -1,12 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { useUpdateEmployeeMutation } from "@/redux/Features/employee/employeeApi";
+import {
+  useUpdateEmployeeMutation,
+  useUpdateProfilePictureMutation,
+} from "@/redux/Features/employee/employeeApi";
 import { Button } from "@/_components/ui/button";
 import { Input } from "@/_components/ui/input";
 import { Label } from "@/_components/ui/label";
 import { Spinner } from "@/_components/ui/spinner";
-import { X, Lock, Unlock } from "lucide-react";
+import { X, Lock, Unlock, Upload } from "lucide-react";
 
 interface Employee {
   _id: string;
@@ -111,8 +114,14 @@ export default function EditEmployeeForm({
   onClose,
   onSuccess,
 }: EditEmployeeFormProps) {
-  const [updateEmployee, { isLoading }] = useUpdateEmployeeMutation();
+  const [updateEmployee, { isLoading: isUpdateLoading }] =
+    useUpdateEmployeeMutation();
+  const [updateProfilePicture, { isLoading: isImageLoading }] =
+    useUpdateProfilePictureMutation();
   const [error, setError] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  const isLoading = isUpdateLoading || isImageLoading;
 
   // Track which fields are unlocked for editing
   const [unlockedFields, setUnlockedFields] = useState<Set<string>>(new Set());
@@ -154,14 +163,30 @@ export default function EditEmployeeForm({
     setFormData({ ...formData, [name]: value });
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
     try {
+      // 1. Handle Profile Picture Update if file selected
+      if (selectedFile) {
+        const formData = new FormData();
+        formData.append("_id", employee._id);
+        formData.append("profilePicture", selectedFile);
+        await updateProfilePicture(formData).unwrap();
+      }
+
+      // 2. Handle Text Fields Update
       // Only send changed fields
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const updateData: any = { _id: employee._id };
+      let hasTextUpdates = false;
 
       // Add only unlocked fields that have changed
       unlockedFields.forEach((fieldName) => {
@@ -171,21 +196,27 @@ export default function EditEmployeeForm({
         // Only include if value has actually changed
         if (currentValue !== originalValue) {
           updateData[fieldName] = currentValue;
+          hasTextUpdates = true;
         }
       });
 
       // Special handling for password - only send if it's not empty
       if (unlockedFields.has("password") && formData.password.trim() !== "") {
         updateData.password = formData.password;
+        hasTextUpdates = true;
       }
 
-      // If no fields were changed, show message
-      if (Object.keys(updateData).length === 1) {
-        setError("No changes detected. Unlock and modify fields to update.");
+      // If text fields were changed, update them
+      if (hasTextUpdates) {
+        await updateEmployee(updateData).unwrap();
+      } else if (!selectedFile) {
+        // If no file and no text changes
+        setError(
+          "No changes detected. Unlock fields or select an image to update."
+        );
         return;
       }
 
-      await updateEmployee(updateData).unwrap();
       if (onSuccess) onSuccess();
       onClose();
     } catch (err: unknown) {
@@ -222,6 +253,28 @@ export default function EditEmployeeForm({
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Profile Picture Upload */}
+            <div className="space-y-2">
+              <Label htmlFor="profilePicture">Profile Picture</Label>
+              <div className="flex items-center gap-4">
+                <div className="relative flex-1">
+                  <Input
+                    id="profilePicture"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="cursor-pointer"
+                  />
+                  <Upload className="absolute right-3 top-2.5 h-4 w-4 text-gray-400 pointer-events-none" />
+                </div>
+                {selectedFile && (
+                  <span className="text-sm text-green-600 font-medium whitespace-nowrap">
+                    Selected: {selectedFile.name}
+                  </span>
+                )}
+              </div>
+            </div>
+
             <div className="grid gap-6 md:grid-cols-2">
               <FieldWithLock
                 name="name"

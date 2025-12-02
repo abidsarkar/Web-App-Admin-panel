@@ -8,12 +8,14 @@ import {
   useGetEmployeesQuery,
   useGetEmployeesSuperAdminQuery,
   useDeleteEmployeeMutation,
+  useLazyExportEmployeesQuery,
 } from "@/redux/Features/employee/employeeApi";
 import EmployeeTable from "@/components/employee/EmployeeTable";
 import EmployeeFilters from "@/components/employee/EmployeeFilters";
 import Pagination from "@/components/ui/Pagination";
 import EmployeeDetailsModal from "@/components/employee/EmployeeDetailsModal";
 import EditEmployeeForm from "@/components/employee/EditEmployeeForm";
+import AccessDenied from "@/components/common/AccessDenied";
 import { toast } from "react-hot-toast";
 
 export default function EmployeesPage() {
@@ -61,6 +63,7 @@ export default function EmployeesPage() {
   });
 
   const [deleteEmployee] = useDeleteEmployeeMutation();
+  const [triggerExport] = useLazyExportEmployeesQuery();
 
   useEffect(() => {
     const userStr = localStorage.getItem("user");
@@ -119,23 +122,7 @@ export default function EmployeesPage() {
   // Handle Export
   const handleExport = async () => {
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/employee/export-employees`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          // Ensure cookies are sent with the request
-          credentials: "include",
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to export employees");
-      }
-
-      const blob = await response.blob();
+      const blob = await triggerExport(undefined).unwrap();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -164,29 +151,7 @@ export default function EmployeesPage() {
   if (!role) return <div className="p-8 text-center">Loading...</div>;
 
   if (!isSuperAdmin) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
-        <div className="bg-red-50 text-red-600 p-4 rounded-full mb-4">
-          <svg
-            className="w-8 h-8"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-            />
-          </svg>
-        </div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
-        <p className="text-gray-500 max-w-md">
-          Only Super Admins can manage employees.
-        </p>
-      </div>
-    );
+    return <AccessDenied />;
   }
 
   return (
