@@ -4,21 +4,39 @@ import { useState } from "react";
 import {
   useGetCategoriesQuery,
   useDeleteCategoryMutation,
+  useGetSubCategoriesQuery,
+  useDeleteSubCategoryMutation,
+  useLazyExportCategoriesQuery,
 } from "@/redux/Features/category/categoryApi";
 import Button from "@/components/ui/button/Button";
-import { Plus } from "lucide-react";
+import { Plus, Download } from "lucide-react";
 import CategoryTable from "@/components/category/CategoryTable";
 import CategoryFilters from "@/components/category/CategoryFilters";
 import CreateCategoryForm from "@/components/category/CreateCategoryForm";
 import EditCategoryForm from "@/components/category/EditCategoryForm";
 import CategoryDetailsModal from "@/components/category/CategoryDetailsModal";
+import SubCategoryTable from "@/components/category/SubCategoryTable";
+import SubCategoryFilters from "@/components/category/SubCategoryFilters";
+import CreateSubCategoryForm from "@/components/category/CreateSubCategoryForm";
+import EditSubCategoryForm from "@/components/category/EditSubCategoryForm";
 import { toast } from "react-hot-toast";
 
 export default function CategoriesPage() {
-  // Filter State
+  const [activeTab, setActiveTab] = useState<"categories" | "subcategories">(
+    "categories"
+  );
+
+  // Category Filter State
   const [categoryId, setCategoryId] = useState("");
   const [subCategory, setSubCategory] = useState<string | boolean>("none");
   const [isDisplayed, setIsDisplayed] = useState<string | boolean>("none");
+
+  // Sub-Category Filter State
+  const [subCategoryId, setSubCategoryId] = useState("");
+  const [category, setCategory] = useState<string | boolean>("none");
+  const [subIsDisplayed, setSubIsDisplayed] = useState<string | boolean>(
+    "none"
+  );
 
   // Modal State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -26,9 +44,11 @@ export default function CategoriesPage() {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [selectedSubCategory, setSelectedSubCategory] = useState<any>(null);
 
-  // Fetch Data
-  const queryParams = {
+  // Fetch Category Data
+  const categoryQueryParams = {
     categoryId,
     subCategory,
     isDisplayed,
@@ -36,37 +56,64 @@ export default function CategoriesPage() {
 
   const {
     data: categoryData,
-    isLoading,
-    refetch,
-  } = useGetCategoriesQuery(queryParams);
+    isLoading: isCategoryLoading,
+    refetch: refetchCategories,
+  } = useGetCategoriesQuery(categoryQueryParams);
 
   const [deleteCategory] = useDeleteCategoryMutation();
 
-  // Handle Search
-  const handleSearch = () => {
-    refetch();
+  // Fetch Sub-Category Data
+  const subCategoryQueryParams = {
+    subCategoryId,
+    category,
+    isDisplayed: subIsDisplayed,
   };
 
-  // Handle View
-  const handleView = (category: any) => {
+  const {
+    data: subCategoryData,
+    isLoading: isSubCategoryLoading,
+    refetch: refetchSubCategories,
+  } = useGetSubCategoriesQuery(subCategoryQueryParams);
+
+  const [deleteSubCategory] = useDeleteSubCategoryMutation();
+  const [triggerExport] = useLazyExportCategoriesQuery();
+
+  // Handle Search
+  const handleCategorySearch = () => {
+    refetchCategories();
+  };
+
+  const handleSubCategorySearch = () => {
+    refetchSubCategories();
+  };
+
+  // Handle View (Category only)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleCategoryView = (category: any) => {
     setSelectedCategory(category);
     setIsViewModalOpen(true);
   };
 
   // Handle Edit
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleEdit = (category: any) => {
+  const handleCategoryEdit = (category: any) => {
     setSelectedCategory(category);
     setIsEditModalOpen(true);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleSubCategoryEdit = (subCategory: any) => {
+    setSelectedSubCategory(subCategory);
+    setIsEditModalOpen(true);
+  };
+
   // Handle Delete
-  const handleDelete = async (id: string) => {
+  const handleCategoryDelete = async (id: string) => {
     if (window.confirm("Are you sure you want to delete this category?")) {
       try {
         await deleteCategory(id).unwrap();
         toast.success("Category deleted successfully");
-        refetch();
+        refetchCategories();
       } catch (err) {
         toast.error("Failed to delete category");
         console.error(err);
@@ -74,7 +121,40 @@ export default function CategoriesPage() {
     }
   };
 
+  const handleSubCategoryDelete = async (id: string) => {
+    if (window.confirm("Are you sure you want to delete this sub-category?")) {
+      try {
+        await deleteSubCategory(id).unwrap();
+        toast.success("Sub-category deleted successfully");
+        refetchSubCategories();
+      } catch (err) {
+        toast.error("Failed to delete sub-category");
+        console.error(err);
+      }
+    }
+  };
+
+  // Handle Export
+  const handleExport = async () => {
+    try {
+      const blob = await triggerExport(undefined).unwrap();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "categories.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success("Categories exported successfully");
+    } catch (err) {
+      console.error("Export failed:", err);
+      toast.error("Failed to export categories");
+    }
+  };
+
   const categories = categoryData || [];
+  const subCategories = subCategoryData || [];
 
   return (
     <div className="space-y-6">
@@ -85,47 +165,114 @@ export default function CategoriesPage() {
             Manage product categories and sub-categories.
           </p>
         </div>
-        <Button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="bg-blue-600 hover:bg-blue-500"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Category
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={handleExport}
+            className="bg-green-600 hover:bg-green-500"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export
+          </Button>
+          <Button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="bg-blue-600 hover:bg-blue-500"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add {activeTab === "categories" ? "Category" : "Sub-Category"}
+          </Button>
+        </div>
       </div>
 
-      {/* Filters */}
-      <CategoryFilters
-        categoryId={categoryId}
-        setCategoryId={setCategoryId}
-        subCategory={subCategory}
-        setSubCategory={setSubCategory}
-        isDisplayed={isDisplayed}
-        setIsDisplayed={setIsDisplayed}
-        onSearch={handleSearch}
-      />
+      {/* Tabs */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab("categories")}
+            className={`${
+              activeTab === "categories"
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
+            Categories
+          </button>
+          <button
+            onClick={() => setActiveTab("subcategories")}
+            className={`${
+              activeTab === "subcategories"
+                ? "border-blue-500 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
+            Sub-Categories
+          </button>
+        </nav>
+      </div>
 
-      {/* Table */}
-      <CategoryTable
-        categories={categories}
-        isLoading={isLoading}
-        onView={handleView}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-      />
+      {/* Categories Tab */}
+      {activeTab === "categories" && (
+        <>
+          <CategoryFilters
+            categoryId={categoryId}
+            setCategoryId={setCategoryId}
+            subCategory={subCategory}
+            setSubCategory={setSubCategory}
+            isDisplayed={isDisplayed}
+            setIsDisplayed={setIsDisplayed}
+            onSearch={handleCategorySearch}
+          />
+          <CategoryTable
+            categories={categories}
+            isLoading={isCategoryLoading}
+            onView={handleCategoryView}
+            onEdit={handleCategoryEdit}
+            onDelete={handleCategoryDelete}
+          />
+        </>
+      )}
+
+      {/* Sub-Categories Tab */}
+      {activeTab === "subcategories" && (
+        <>
+          <SubCategoryFilters
+            subCategoryId={subCategoryId}
+            setSubCategoryId={setSubCategoryId}
+            category={category}
+            setCategory={setCategory}
+            isDisplayed={subIsDisplayed}
+            setIsDisplayed={setSubIsDisplayed}
+            onSearch={handleSubCategorySearch}
+          />
+          <SubCategoryTable
+            subCategories={subCategories}
+            isLoading={isSubCategoryLoading}
+            onEdit={handleSubCategoryEdit}
+            onDelete={handleSubCategoryDelete}
+          />
+        </>
+      )}
 
       {/* Create Modal */}
-      {isCreateModalOpen && (
+      {isCreateModalOpen && activeTab === "categories" && (
         <CreateCategoryForm
           onClose={() => setIsCreateModalOpen(false)}
           onSuccess={() => {
-            refetch();
+            refetchCategories();
+          }}
+        />
+      )}
+
+      {isCreateModalOpen && activeTab === "subcategories" && (
+        <CreateSubCategoryForm
+          onClose={() => setIsCreateModalOpen(false)}
+          onSuccess={() => {
+            refetchSubCategories();
           }}
         />
       )}
 
       {/* Edit Modal */}
-      {isEditModalOpen && selectedCategory && (
+      {isEditModalOpen && selectedCategory && activeTab === "categories" && (
         <EditCategoryForm
           category={selectedCategory}
           onClose={() => {
@@ -133,12 +280,27 @@ export default function CategoriesPage() {
             setSelectedCategory(null);
           }}
           onSuccess={() => {
-            refetch();
+            refetchCategories();
           }}
         />
       )}
 
-      {/* View Modal */}
+      {isEditModalOpen &&
+        selectedSubCategory &&
+        activeTab === "subcategories" && (
+          <EditSubCategoryForm
+            subCategory={selectedSubCategory}
+            onClose={() => {
+              setIsEditModalOpen(false);
+              setSelectedSubCategory(null);
+            }}
+            onSuccess={() => {
+              refetchSubCategories();
+            }}
+          />
+        )}
+
+      {/* View Modal (Category only) */}
       {isViewModalOpen && selectedCategory && (
         <CategoryDetailsModal
           category={selectedCategory}

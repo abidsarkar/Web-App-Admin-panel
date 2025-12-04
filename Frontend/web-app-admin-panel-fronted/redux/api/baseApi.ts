@@ -76,6 +76,13 @@ const baseQueryWithAuth: BaseQueryFn<
 export const baseApi = createApi({
   reducerPath: "api",
   baseQuery: baseQueryWithAuth, // Use the new dynamic baseQuery
-  tagTypes: ["Employee", "Product", "User", "Category"],
+  tagTypes: [
+    "Employee",
+    "Product",
+    "User",
+    "Category",
+    "SubCategory",
+    "Content",
+  ],
   endpoints: () => ({}),
 });

@@ -11,6 +11,7 @@ import {
   LogOut,
   X,
   Tags,
+  FileText,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { authService } from "@/lib/auth-service";
@@ -75,6 +76,13 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
       icon: Tags,
       href: "/dashboard/categories",
       color: "text-orange-500",
+      roles: ["superAdmin", "subAdmin"],
+    },
+    {
+      label: "Site Content",
+      icon: FileText,
+      href: "/dashboard/site-content",
+      color: "text-teal-500",
       roles: ["superAdmin", "subAdmin"],
     },
     {

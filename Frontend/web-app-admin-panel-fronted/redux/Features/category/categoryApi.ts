@@ -49,6 +49,78 @@ export const categoryApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Category"],
     }),
+    // Sub-Category Endpoints
+    getSubCategories: builder.query({
+      query: (params) => {
+        const queryParams = new URLSearchParams();
+        if (params.subCategoryId)
+          queryParams.append("subCategoryId", params.subCategoryId);
+        if (params.category !== "" && params.category !== "none")
+          queryParams.append("category", String(params.category));
+        if (params.isDisplayed !== "" && params.isDisplayed !== "none")
+          queryParams.append("isDisplayed", String(params.isDisplayed));
+
+        return `/category/get-sub-admin?${queryParams.toString()}`;
+      },
+      transformResponse: (response: any) => {
+        const subCategoryData = response.data.subCategory;
+        // Handle nested structure if present (based on user request example)
+        if (
+          subCategoryData &&
+          subCategoryData.subCategory &&
+          Array.isArray(subCategoryData.subCategory)
+        ) {
+          return subCategoryData.subCategory;
+        }
+        if (Array.isArray(subCategoryData)) {
+          return subCategoryData;
+        } else if (subCategoryData && typeof subCategoryData === "object") {
+          // If it's a single object wrapped in data.subCategory
+          if (
+            subCategoryData.subCategory &&
+            typeof subCategoryData.subCategory === "object" &&
+            !Array.isArray(subCategoryData.subCategory)
+          ) {
+            return [subCategoryData.subCategory];
+          }
+          // If it's a direct single object
+          return [subCategoryData];
+        }
+        return [];
+      },
+      providesTags: ["SubCategory"],
+      keepUnusedDataFor: 0,
+    }),
+    createSubCategory: builder.mutation({
+      query: (data) => ({
+        url: "/category/create-sub",
+        method: "POST",
+        body: data,
+      }),
+      invalidatesTags: ["SubCategory"],
+    }),
+    updateSubCategory: builder.mutation({
+      query: (data) => ({
+        url: "/category/update-sub",
+        method: "PATCH",
+        body: data,
+      }),
+      invalidatesTags: ["SubCategory"],
+    }),
+    deleteSubCategory: builder.mutation({
+      query: (subCategoryId) => ({
+        url: `/category/delete-sub?subCategoryId=${subCategoryId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["SubCategory"],
+    }),
+    // Export
+    exportCategories: builder.query({
+      query: () => ({
+        url: "/category/export",
+        responseHandler: (response) => response.blob(),
+      }),
+    }),
   }),
   overrideExisting: true,
 });
@@ -58,4 +130,9 @@ export const {
   useCreateCategoryMutation,
   useUpdateCategoryMutation,
   useDeleteCategoryMutation,
+  useGetSubCategoriesQuery,
+  useCreateSubCategoryMutation,
+  useUpdateSubCategoryMutation,
+  useDeleteSubCategoryMutation,
+  useLazyExportCategoriesQuery,
 } = categoryApi;
