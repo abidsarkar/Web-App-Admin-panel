@@ -10,6 +10,7 @@ import {
   Settings,
   LogOut,
   X,
+  Tags,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { authService } from "@/lib/auth-service";
@@ -68,6 +69,13 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
       href: "/dashboard/products",
       color: "text-pink-700",
       roles: ["superAdmin", "subAdmin", "editor"],
+    },
+    {
+      label: "Categories",
+      icon: Tags,
+      href: "/dashboard/categories",
+      color: "text-orange-500",
+      roles: ["superAdmin", "subAdmin"],
     },
     {
       label: "Settings",
