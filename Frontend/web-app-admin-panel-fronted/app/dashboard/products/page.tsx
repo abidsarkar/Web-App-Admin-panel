@@ -194,7 +194,7 @@ export default function ProductsPage() {
       {/* View Modal */}
       {isViewModalOpen && selectedProduct && (
         <ProductDetailsModal
-          product={selectedProduct}
+          productId={selectedProduct._id}
           onClose={() => {
             setIsViewModalOpen(false);
             setSelectedProduct(null);

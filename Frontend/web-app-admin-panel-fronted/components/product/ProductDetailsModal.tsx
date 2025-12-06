@@ -4,32 +4,35 @@ import { baseUrl_public_image } from "@/utils/baseUrl";
 import ProfileImage from "@/components/ui/ProfileImage";
 import { useState } from "react";
 import {
+  useGetSingleProductQuery,
   useDeleteProductImageMutation,
   useReplaceProductImageMutation,
 } from "@/redux/Features/product/productApi";
 
 interface ProductDetailsModalProps {
-  product: any;
+  productId: string;
   onClose: () => void;
 }
 
 export default function ProductDetailsModal({
-  product,
+  productId,
   onClose,
 }: ProductDetailsModalProps) {
   const API_URL = baseUrl_public_image || "http://localhost:5001";
+
+  // Fetch product data - will auto-refresh when cache is invalidated
+  const { data: product, isLoading } = useGetSingleProductQuery(productId);
+
   const [deleteImage, { isLoading: isDeleting }] =
     useDeleteProductImageMutation();
   const [replaceImage, { isLoading: isReplacing }] =
     useReplaceProductImageMutation();
   const [replacingImageId, setReplacingImageId] = useState<string | null>(null);
 
-  if (!product) return null;
-
   const handleDeleteImage = async (imageId: string) => {
     if (!confirm("Are you sure you want to delete this image?")) return;
     try {
-      await deleteImage({ productId: product._id, imageId }).unwrap();
+      await deleteImage({ productId, imageId }).unwrap();
     } catch (error) {
       console.error("Failed to delete image:", error);
       alert("Failed to delete image");
@@ -37,19 +40,33 @@ export default function ProductDetailsModal({
   };
 
   const handleReplaceImage = async (imageId: string, file: File) => {
+    setReplacingImageId(imageId);
     const formData = new FormData();
-    formData.append("productId", product._id);
+    formData.append("productId", productId);
     formData.append("imageId", imageId);
     formData.append("newImage", file);
 
     try {
       await replaceImage(formData).unwrap();
-      setReplacingImageId(null);
     } catch (error) {
       console.error("Failed to replace image:", error);
       alert("Failed to replace image");
+    } finally {
+      setReplacingImageId(null);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-xl shadow-xl p-8">
+          <div className="text-center">Loading product details...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!product) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
