@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { useCreateProductMutation } from "@/redux/Features/product/productApi";
+import {
+  useCreateProductMutation,
+  useUploadCoverImageMutation,
+} from "@/redux/Features/product/productApi";
 import { Button } from "@/_components/ui/button";
 import { Input } from "@/_components/ui/input";
 import { Label } from "@/_components/ui/label";
@@ -15,7 +18,9 @@ export default function CreateProductForm({
   onClose,
   onSuccess,
 }: CreateProductFormProps) {
-  const [createProduct, { isLoading }] = useCreateProductMutation();
+  const [createProduct, { isLoading: isCreating }] = useCreateProductMutation();
+  const [uploadCover, { isLoading: isUploading }] =
+    useUploadCoverImageMutation();
   const [error, setError] = useState("");
   const [coverImage, setCoverImage] = useState<File | null>(null);
 
@@ -56,22 +61,54 @@ export default function CreateProductForm({
     e.preventDefault();
     setError("");
 
-    if (!formData.productName || !formData.productSubCategoryId) {
-      setError("Product Name and Sub-Category ID are required.");
+    // Basic client-side validation
+    const requiredFields = [
+      "productId",
+      "productName",
+      "productDescription",
+      "productSize",
+      "productColor",
+      "productColorCode",
+      "productPrice",
+      "productStock",
+      "productSubCategoryId",
+      "productDeliveryOption",
+      "productPaymentOption",
+    ];
+
+    const missingFields = requiredFields.filter(
+      (field) => !formData[field as keyof typeof formData]
+    );
+    if (missingFields.length > 0) {
+      setError(
+        `Please fill in all required fields: ${missingFields.join(", ")}`
+      );
       return;
     }
 
     try {
-      const submitData: any = { ...formData };
+      // 1. Create Product (JSON)
+      // Convert numeric fields
+      const submitData = {
+        ...formData,
+        productPrice: Number(formData.productPrice),
+        productStock: Number(formData.productStock),
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const response: any = await createProduct(submitData).unwrap();
+      const newProductId = response?.data?.product?._id;
+
+      if (!newProductId) {
+        throw new Error("Failed to get new product ID");
+      }
+
+      // 2. Upload Cover Image (FormData) if exists
       if (coverImage) {
         const formDataObj = new FormData();
-        Object.keys(submitData).forEach((key) => {
-          formDataObj.append(key, submitData[key]);
-        });
+        formDataObj.append("_id", newProductId);
         formDataObj.append("productCoverImage", coverImage);
-        await createProduct(formDataObj).unwrap();
-      } else {
-        await createProduct(submitData).unwrap();
+        await uploadCover(formDataObj).unwrap();
       }
 
       if (onSuccess) onSuccess();
@@ -83,6 +120,8 @@ export default function CreateProductForm({
       setError(errorMessage);
     }
   };
+
+  const isLoading = isCreating || isUploading;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
@@ -107,12 +146,15 @@ export default function CreateProductForm({
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="productId">Product ID</Label>
+                <Label htmlFor="productId">
+                  Product ID <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="productId"
                   name="productId"
                   value={formData.productId}
                   onChange={handleChange}
+                  required
                 />
               </div>
               <div>
@@ -128,7 +170,9 @@ export default function CreateProductForm({
                 />
               </div>
               <div className="col-span-2">
-                <Label htmlFor="productDescription">Description</Label>
+                <Label htmlFor="productDescription">
+                  Description <span className="text-red-500">*</span>
+                </Label>
                 <textarea
                   id="productDescription"
                   name="productDescription"
@@ -136,10 +180,13 @@ export default function CreateProductForm({
                   onChange={handleChange}
                   rows={3}
                   className="mt-1 flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  required
                 />
               </div>
               <div>
-                <Label htmlFor="productPrice">Price</Label>
+                <Label htmlFor="productPrice">
+                  Price <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="productPrice"
                   name="productPrice"
@@ -147,44 +194,57 @@ export default function CreateProductForm({
                   step="0.01"
                   value={formData.productPrice}
                   onChange={handleChange}
+                  required
                 />
               </div>
               <div>
-                <Label htmlFor="productStock">Stock</Label>
+                <Label htmlFor="productStock">
+                  Stock <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="productStock"
                   name="productStock"
                   type="number"
                   value={formData.productStock}
                   onChange={handleChange}
+                  required
                 />
               </div>
               <div>
-                <Label htmlFor="productSize">Size</Label>
+                <Label htmlFor="productSize">
+                  Size <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="productSize"
                   name="productSize"
                   value={formData.productSize}
                   onChange={handleChange}
+                  required
                 />
               </div>
               <div>
-                <Label htmlFor="productColor">Color</Label>
+                <Label htmlFor="productColor">
+                  Color <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="productColor"
                   name="productColor"
                   value={formData.productColor}
                   onChange={handleChange}
+                  required
                 />
               </div>
               <div>
-                <Label htmlFor="productColorCode">Color Code</Label>
+                <Label htmlFor="productColorCode">
+                  Color Code <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="productColorCode"
                   name="productColorCode"
                   value={formData.productColorCode}
                   onChange={handleChange}
                   placeholder="#000000"
+                  required
                 />
               </div>
               <div>
@@ -200,21 +260,27 @@ export default function CreateProductForm({
                 />
               </div>
               <div>
-                <Label htmlFor="productDeliveryOption">Delivery Option</Label>
+                <Label htmlFor="productDeliveryOption">
+                  Delivery Option <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="productDeliveryOption"
                   name="productDeliveryOption"
                   value={formData.productDeliveryOption}
                   onChange={handleChange}
+                  required
                 />
               </div>
               <div>
-                <Label htmlFor="productPaymentOption">Payment Option</Label>
+                <Label htmlFor="productPaymentOption">
+                  Payment Option <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="productPaymentOption"
                   name="productPaymentOption"
                   value={formData.productPaymentOption}
                   onChange={handleChange}
+                  required
                 />
               </div>
               <div>
