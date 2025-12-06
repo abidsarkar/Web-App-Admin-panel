@@ -92,6 +92,29 @@ export const productApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ["Product"],
     }),
+    // Delete product image
+    deleteProductImage: builder.mutation({
+      query: ({
+        productId,
+        imageId,
+      }: {
+        productId: string;
+        imageId: string;
+      }) => ({
+        url: `/product/delete-many?productId=${productId}&imageId=${imageId}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Product"],
+    }),
+    // Replace product image
+    replaceProductImage: builder.mutation({
+      query: (formData) => ({
+        url: "/product/replace-many",
+        method: "PATCH",
+        body: formData,
+      }),
+      invalidatesTags: ["Product"],
+    }),
     // Export products
     exportProducts: builder.query({
       query: () => ({
@@ -112,5 +135,7 @@ export const {
   useDeleteProductMutation,
   useUploadCoverImageMutation,
   useUploadProductImagesMutation,
+  useDeleteProductImageMutation,
+  useReplaceProductImageMutation,
   useLazyExportProductsQuery,
 } = productApi;

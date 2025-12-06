@@ -49,6 +49,8 @@ export default function ProductFilters({
   onSearch,
 }: ProductFiltersProps) {
   const [localSearch, setLocalSearch] = useState(search);
+  const [localCategoryId, setLocalCategoryId] = useState(categoryId);
+  const [localSubCategoryId, setLocalSubCategoryId] = useState(subCategoryId);
 
   // Debounce search
   useEffect(() => {
@@ -57,6 +59,22 @@ export default function ProductFilters({
     }, 500);
     return () => clearTimeout(timer);
   }, [localSearch, setSearch]);
+
+  // Debounce category ID
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setCategoryId(localCategoryId);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [localCategoryId, setCategoryId]);
+
+  // Debounce subcategory ID
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSubCategoryId(localSubCategoryId);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [localSubCategoryId, setSubCategoryId]);
 
   return (
     <div className="space-y-4">
@@ -89,8 +107,8 @@ export default function ProductFilters({
             </label>
             <Input
               placeholder="e.g. c001"
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
+              value={localCategoryId}
+              onChange={(e) => setLocalCategoryId(e.target.value)}
             />
           </div>
 
@@ -101,8 +119,8 @@ export default function ProductFilters({
             </label>
             <Input
               placeholder="e.g. su001"
-              value={subCategoryId}
-              onChange={(e) => setSubCategoryId(e.target.value)}
+              value={localSubCategoryId}
+              onChange={(e) => setLocalSubCategoryId(e.target.value)}
             />
           </div>
 

@@ -1,29 +1,7 @@
 import Button from "@/components/ui/button/Button";
 import { baseUrl_public_image } from "@/utils/baseUrl";
-import { Trash2, Edit, Eye, Image as ImageIcon } from "lucide-react";
-import { useState } from "react";
-
-const ProductImage = ({ src, alt }: { src: string; alt: string }) => {
-  const [error, setError] = useState(false);
-
-  if (error) {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-gray-100 text-gray-400">
-        <ImageIcon className="w-8 h-8" />
-      </div>
-    );
-  }
-
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={src}
-      alt={alt}
-      className="w-full h-full object-cover"
-      onError={() => setError(true)}
-    />
-  );
-};
+import { Trash2, Edit, Eye } from "lucide-react";
+import ProfileImage from "@/components/ui/ProfileImage";
 
 interface Product {
   _id: string;
@@ -93,11 +71,21 @@ export default function ProductTable({
                 className="hover:bg-gray-50 transition-colors"
               >
                 <td className="px-6 py-4">
-                  <div className="w-16 h-16 relative rounded-lg overflow-hidden bg-gray-100">
-                    <ProductImage
-                      src={`${API_URL}/${product.productCoverImage.filePathURL}`}
-                      alt={product.productName}
-                    />
+                  <div className="w-16 h-16 relative rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
+                    {product.productCoverImage?.filePathURL ? (
+                      <ProfileImage
+                        src={`${API_URL}/${product.productCoverImage.filePathURL.replace(
+                          /^\.?\/?/,
+                          ""
+                        )}`}
+                        alt={product.productName}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-gray-50 text-gray-400 font-bold text-xs">
+                        {product.productName?.charAt(0)}
+                      </div>
+                    )}
                   </div>
                 </td>
                 <td className="px-6 py-4 font-medium text-gray-900">

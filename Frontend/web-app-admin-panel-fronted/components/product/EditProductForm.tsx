@@ -52,8 +52,8 @@ export default function EditProductForm({
     productSize: product.productSize,
     productColor: product.productColor,
     productColorCode: product.productColorCode,
-    productPrice: Number(product.productPrice),
-    productStock: Number(product.productStock),
+    productPrice: String(product.productPrice),
+    productStock: String(product.productStock),
     productSubCategoryId: product.productSubCategoryId,
     productDeliveryOption: product.productDeliveryOption,
     productPaymentOption: product.productPaymentOption,
@@ -81,7 +81,13 @@ export default function EditProductForm({
     setError("");
 
     try {
-      await updateProduct({ _id: product._id, ...formData }).unwrap();
+      // Convert numeric fields
+      const submitData = {
+        ...formData,
+        productPrice: Number(formData.productPrice),
+        productStock: Number(formData.productStock),
+      };
+      await updateProduct({ _id: product._id, ...submitData }).unwrap();
       if (onSuccess) onSuccess();
       onClose();
     } catch (err: unknown) {
