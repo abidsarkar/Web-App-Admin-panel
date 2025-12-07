@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { authService } from "@/lib/auth-service";
-import { useLogoutMutation } from "@/redux/features/auth/authApi";
+import { useLogoutMutation } from "@/redux/Features/Auth/authApi";
 import Cookies from "js-cookie";
 
 interface SidebarProps {

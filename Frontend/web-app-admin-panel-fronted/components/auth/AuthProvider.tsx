@@ -4,7 +4,7 @@ import { useRefreshTokenMutation } from "@/redux/Features/Auth/authApi";
 import Cookies from "js-cookie";
 import { useRouter, usePathname } from "next/navigation";
 import { useDispatch } from "react-redux";
-import { setUser, logout } from "@/redux/features/auth/authSlice";
+import { setUser, logout } from "@/redux/Features/Auth/authSlice";
 
 export default function AuthProvider({
   children,
@@ -45,7 +45,10 @@ export default function AuthProvider({
       // If we have a refresh token but no access token, try to refresh
       if (refreshTokenValue && !accessToken) {
         try {
-          const result = await refreshToken().unwrap();
+          // Pass the refresh token as an argument
+          const result = await refreshToken({
+            refreshToken: refreshTokenValue,
+          }).unwrap();
 
           if (result.data?.accessToken) {
             // Store new access token

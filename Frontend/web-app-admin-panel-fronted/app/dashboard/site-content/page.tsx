@@ -6,7 +6,8 @@ import {
   useUpsertContentMutation,
   useLazyExportContentQuery,
 } from "@/redux/Features/content/contentApi";
-import Button from "@/components/ui/button/Button";
+//import Button from "@/components/ui/button/Button";
+import { Button } from "@/_components/ui/button";
 import { Input } from "@/_components/ui/input";
 import { Label } from "@/_components/ui/label";
 import { Spinner } from "@/_components/ui/spinner";
@@ -227,7 +228,7 @@ export default function SiteContentPage() {
 
         <div className="flex justify-end">
           <Button
-            type="submit"
+            type="submit" // Add type="submit"
             disabled={isUpdating}
             className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >

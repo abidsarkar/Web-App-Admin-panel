@@ -2,24 +2,22 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  useCreateProductMutation,
-  useGetCategoriesQuery,
-} from "@/redux/features/product/productApi";
+import { useCreateProductMutation } from "@/redux/Features/product/productApi";
 import { Button } from "@/_components/ui/button";
 import { Input } from "@/_components/ui/input";
 import { Label } from "@/_components/ui/label";
 import { Spinner } from "@/_components/ui/spinner";
 import { ArrowLeft, Upload } from "lucide-react";
 import Link from "next/link";
+import { useGetCategoriesQuery } from "@/redux/Features/category/categoryApi";
 
 export default function CreateProductPage() {
   const router = useRouter();
   const [createProduct, { isLoading }] = useCreateProductMutation();
-  const { data: categoriesData } = useGetCategoriesQuery(undefined);
+  const { data: categoriesData } = useGetCategoriesQuery({});
   const [error, setError] = useState("");
 
-  const categories = categoriesData?.data?.category || [];
+  const categories = categoriesData || [];
 
   const [formData, setFormData] = useState({
     name: "",
@@ -60,6 +58,7 @@ export default function CreateProductPage() {
 
       await createProduct(data).unwrap();
       router.push("/dashboard/products");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.data?.message || "Failed to create product.");
     }
@@ -158,7 +157,7 @@ export default function CreateProductPage() {
               required
             >
               <option value="">Select Category</option>
-              {categories.map((cat: any) => (
+              {categories.map((cat) => (
                 <option key={cat._id} value={cat._id}>
                   {cat.name}
                 </option>
