@@ -19,9 +19,9 @@ export default function SignInForm() {
     setError("");
 
     try {
-      const result = await login({ email, password }).unwrap();
+      const result = await login({ email, password });
 
-      if (result.data) {
+      if ("data" in result && result.data) {
         // Store tokens in cookies using helper
         if (result.data.accessToken && result.data.refreshToken) {
           setAuthCookies(result.data.accessToken, result.data.refreshToken);
@@ -35,13 +35,9 @@ export default function SignInForm() {
         // Redirect to dashboard
         router.push("/dashboard");
       }
-    } catch (err: unknown) {
-      console.error("Login error:", err);
-      const errorData = err as { data?: { message?: string } };
-      setError(
-        errorData.data?.message ||
-          "Login failed. Please check your credentials."
-      );
+    } catch (error) {
+      console.error("Login failed:", error);
+      setError("Login failed. Please check your credentials.");
     }
   };
 

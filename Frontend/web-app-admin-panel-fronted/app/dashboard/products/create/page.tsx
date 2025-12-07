@@ -11,13 +11,18 @@ import { ArrowLeft, Upload } from "lucide-react";
 import Link from "next/link";
 import { useGetCategoriesQuery } from "@/redux/Features/category/categoryApi";
 
+interface Category {
+  _id: string;
+  name: string;
+}
+
 export default function CreateProductPage() {
   const router = useRouter();
   const [createProduct, { isLoading }] = useCreateProductMutation();
   const { data: categoriesData } = useGetCategoriesQuery({});
   const [error, setError] = useState("");
 
-  const categories = categoriesData || [];
+  const categories: Category[] = categoriesData || [];
 
   const [formData, setFormData] = useState({
     name: "",
