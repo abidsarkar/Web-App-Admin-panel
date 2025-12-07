@@ -135,9 +135,16 @@ export default function CustomersPage() {
           <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
             Customers
           </h2>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">
-            Manage your customer base and view details.
-          </p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-gray-500 dark:text-gray-400">
+              Manage your customer base and view details.
+            </p>
+            {data?.data?.pagination?.total !== undefined && (
+              <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">
+                {data.data.pagination.total} Total
+              </span>
+            )}
+          </div>
         </div>
         <Button
           onClick={handleExport}
@@ -176,6 +183,10 @@ export default function CustomersPage() {
           currentPage={data.data.pagination.page}
           totalPages={data.data.pagination.totalPages}
           onPageChange={handlePageChange}
+          hasNextPage={
+            data.data.pagination.page < data.data.pagination.totalPages
+          }
+          hasPrevPage={data.data.pagination.page > 1}
         />
       )}
 
