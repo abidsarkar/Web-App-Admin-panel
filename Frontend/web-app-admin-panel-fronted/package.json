@@ -19,6 +19,7 @@
     "axios": "^1.13.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
     "flatpickr": "^4.6.13",
     "fullcalendar": "^6.1.19",
     "js-cookie": "^3.0.5",
@@ -34,6 +35,7 @@
     "react-jvectormap": "^0.0.15",
     "react-redux": "^9.2.0",
     "set-cookie-parser": "^2.7.2",
+    "sweetalert2": "^11.26.4",
     "tailwind-merge": "^3.4.0",
     "zod": "^4.1.13",
     "zustand": "^5.0.8"

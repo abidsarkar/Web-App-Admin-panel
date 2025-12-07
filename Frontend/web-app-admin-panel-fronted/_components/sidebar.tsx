@@ -12,6 +12,7 @@ import {
   X,
   Tags,
   FileText,
+  PersonStanding,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { authService } from "@/lib/auth-service";
@@ -77,6 +78,13 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
       href: "/dashboard/categories",
       color: "text-orange-500",
       roles: ["superAdmin", "subAdmin"],
+    },
+    {
+      label: "Customers",
+      icon: PersonStanding,
+      href: "/dashboard/customers",
+      color: "text-green-500",
+      roles: ["superAdmin"],
     },
     {
       label: "Site Content",
