@@ -2,127 +2,127 @@
 
 import { useState, useEffect } from "react";
 import { useChangePasswordFromProfileMutation } from "@/redux/Features/Auth/authApi";
-import Button from "@/components/ui/button/Button";
+import { Button } from "@/_components/ui/button";
 import { Input } from "@/_components/ui/input";
 import { Label } from "@/_components/ui/label";
+import { Spinner } from "@/_components/ui/spinner";
 import { toast } from "react-hot-toast";
 import { authService } from "@/lib/auth-service";
+import {
+  changePasswordSchema,
+  type ChangePasswordFormData,
+} from "@/lib/validations/password";
 
 export default function ChangePasswordForm() {
-  console.log("ChangePasswordForm rendered");
-
   const [changePassword, { isLoading }] =
     useChangePasswordFromProfileMutation();
   const [userId, setUserId] = useState<string>("");
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [errors, setErrors] = useState<{
-    currentPassword?: string;
-    newPassword?: string;
-    confirmPassword?: string;
-  }>({});
+  const [formData, setFormData] = useState<ChangePasswordFormData>({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof ChangePasswordFormData, string>>
+  >({});
 
   // Get current user ID
   useEffect(() => {
-    const user = authService.getCurrentUser();
-    if (user && user.id) {
-      setUserId(user.id);
-      console.log("User ID:", user.id);
-    } else {
-      console.error("No user ID found!");
-      toast.error("User session not found. Please login again.");
+    try {
+      const user = authService.getCurrentUser();
+      const id = user?.id || user?._id;
+      if (id) {
+        setUserId(id);
+      } else {
+        console.error("User ID not found in session");
+        toast.error("Session expired. Please login again.");
+      }
+    } catch (error) {
+      console.error("Error retrieving user session:", error);
     }
   }, []);
 
-  const validateForm = () => {
-    const newErrors: typeof errors = {};
-
-    // Validate current password
-    if (!currentPassword) {
-      newErrors.currentPassword = "Current password is required";
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    // Clear error for this field when user starts typing
+    if (errors[name as keyof ChangePasswordFormData]) {
+      setErrors((prev) => ({ ...prev, [name]: undefined }));
     }
-
-    // Validate new password
-    if (!newPassword) {
-      newErrors.newPassword = "New password is required";
-    } else if (newPassword.length < 6) {
-      newErrors.newPassword = "Password must be at least 6 characters long";
-    } else if (newPassword.length > 30) {
-      newErrors.newPassword = "Password must be at most 30 characters long";
-    } else if (!/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$/.test(newPassword)) {
-      newErrors.newPassword = "Password must contain both letters and numbers";
-    }
-
-    // Validate confirm password
-    if (!confirmPassword) {
-      newErrors.confirmPassword = "Please confirm your password";
-    } else if (newPassword !== confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
-    }
-
-    // Check if new password is different from current
-    if (currentPassword && newPassword && currentPassword === newPassword) {
-      newErrors.newPassword =
-        "New password must be different from current password";
-    }
-
-    return newErrors;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Form submitted!");
-    console.log("Current password:", currentPassword);
-    console.log("New password:", newPassword);
-    console.log("Confirm password:", confirmPassword);
-    console.log("User ID:", userId);
-
     setErrors({});
 
-    // Check if user ID is available
     if (!userId) {
       toast.error("User session not found. Please login again.");
       return;
     }
 
-    // Validate
-    const validationErrors = validateForm();
-    console.log("Validation errors:", validationErrors);
+    // Validate form data with Zod schema
+    try {
+      changePasswordSchema.parse(formData);
+    } catch (validationError: any) {
+      const validationErrors: Partial<
+        Record<keyof ChangePasswordFormData, string>
+      > = {};
 
-    if (Object.keys(validationErrors).length > 0) {
+      if (validationError.errors) {
+        validationError.errors.forEach((err: any) => {
+          const field = err.path[0] as keyof ChangePasswordFormData;
+          validationErrors[field] = err.message;
+        });
+      }
+
       setErrors(validationErrors);
-      toast.error("Please fix the validation errors");
+      return;
+    }
+
+    // Check if new password matches confirmation
+    if (formData.newPassword !== formData.confirmPassword) {
+      setErrors((prev) => ({
+        ...prev,
+        confirmPassword: "Passwords do not match",
+      }));
       return;
     }
 
     try {
-      console.log("Calling API with data:", {
-        _id: userId,
-        currentPassword: "***",
-        newPassword: "***",
-        confirmPassword: "***",
-      });
-
+      // Call the mutation
       await changePassword({
         _id: userId,
-        currentPassword,
-        newPassword,
-        confirmPassword,
+        currentPassword: formData.currentPassword,
+        newPassword: formData.newPassword,
+        confirmPassword: formData.confirmPassword,
       }).unwrap();
 
-      console.log("Success!");
       toast.success("Password changed successfully!");
 
       // Reset form
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-    } catch (error: unknown) {
-      console.error("API error:", error);
-      const apiError = error as { data?: { message?: string } };
-      const errorMessage =
-        apiError?.data?.message || "Failed to change password";
+      setFormData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+      setErrors({});
+    } catch (error: any) {
+      console.error("Change password error:", error);
+
+      // Handle API validation errors
+      if (error?.data?.errors) {
+        const apiErrors: Partial<Record<keyof ChangePasswordFormData, string>> =
+          {};
+        Object.entries(error.data.errors).forEach(([field, message]) => {
+          if (field in formData) {
+            apiErrors[field as keyof ChangePasswordFormData] =
+              message as string;
+          }
+        });
+        setErrors(apiErrors);
+      }
+
+      const errorMessage = error?.data?.message || "Failed to change password";
       toast.error(errorMessage);
     }
   };
@@ -139,15 +139,11 @@ export default function ChangePasswordForm() {
             id="currentPassword"
             name="currentPassword"
             type="password"
-            value={currentPassword}
-            onChange={(e) => {
-              console.log("Current password changed:", e.target.value);
-              setCurrentPassword(e.target.value);
-              if (errors.currentPassword) {
-                setErrors((prev) => ({ ...prev, currentPassword: undefined }));
-              }
-            }}
+            value={formData.currentPassword}
+            onChange={handleChange}
             className={errors.currentPassword ? "border-red-500" : ""}
+            placeholder="Enter current password"
+            disabled={isLoading}
           />
           {errors.currentPassword && (
             <p className="text-red-500 text-sm mt-1">
@@ -164,15 +160,11 @@ export default function ChangePasswordForm() {
             id="newPassword"
             name="newPassword"
             type="password"
-            value={newPassword}
-            onChange={(e) => {
-              console.log("New password changed:", e.target.value);
-              setNewPassword(e.target.value);
-              if (errors.newPassword) {
-                setErrors((prev) => ({ ...prev, newPassword: undefined }));
-              }
-            }}
+            value={formData.newPassword}
+            onChange={handleChange}
             className={errors.newPassword ? "border-red-500" : ""}
+            placeholder="Enter new password"
+            disabled={isLoading}
           />
           {errors.newPassword && (
             <p className="text-red-500 text-sm mt-1">{errors.newPassword}</p>
@@ -190,15 +182,11 @@ export default function ChangePasswordForm() {
             id="confirmPassword"
             name="confirmPassword"
             type="password"
-            value={confirmPassword}
-            onChange={(e) => {
-              console.log("Confirm password changed:", e.target.value);
-              setConfirmPassword(e.target.value);
-              if (errors.confirmPassword) {
-                setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
-              }
-            }}
+            value={formData.confirmPassword}
+            onChange={handleChange}
             className={errors.confirmPassword ? "border-red-500" : ""}
+            placeholder="Confirm new password"
+            disabled={isLoading}
           />
           {errors.confirmPassword && (
             <p className="text-red-500 text-sm mt-1">
@@ -210,10 +198,16 @@ export default function ChangePasswordForm() {
         <Button
           type="submit"
           disabled={isLoading}
-          variant="default"
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
+          className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
         >
-          {isLoading ? "Changing Password..." : "Change Password"}
+          {isLoading ? (
+            <>
+              <Spinner className="w-4 h-4 mr-2" />
+              Changing Password...
+            </>
+          ) : (
+            "Change Password"
+          )}
         </Button>
       </form>
     </div>
